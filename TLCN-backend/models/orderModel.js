@@ -36,8 +36,8 @@ const orderSchema = new mongoose.Schema(
       type: String,
       required: [true, "Phải có phương thức thanh toán"],
       enum: {
-        values: ["tiền mặt", "paypal", "vnpay", "số dư"],
-        message: "Phương thức thanh toán là tiền mặt hoặc ngân hàng",
+        values: ["tiền mặt", "paypal"],
+        message: "Phương thức thanh toán là tiền mặt hoặc paypal",
       },
     },
     status: {
@@ -72,22 +72,17 @@ orderSchema.pre(/^find/, function (next) {
   next();
 });
 
-orderSchema.statics.updateUserBalance = async function (userId, balance) {
-  await User.findByIdAndUpdate(userId, { $inc: { balance: balance } });
-};
-orderSchema.post("save", function () {
-  if (this.payments === "số dư")
-    this.constructor.updateUserBalance(this.user, -this.totalPrice);
-});
-
 orderSchema.post("findOneAndUpdate", async function (doc) {
-  if (doc.payments !== "tiền mặt" && doc.status === "Cancelled")
+  // Nếu đơn hàng không phải tiền mặt (tức là đã thanh toán qua Paypal) và bị hủy
+  if (doc.payments === "paypal" && doc.status === "Cancelled") {
     await Transaction.create({
       user: doc.user._id.toString(),
       amount: doc.totalPrice,
-      payments: "refund",
+      payments: "refund_to_bank", // Đổi nhãn để quản lý biết cần chuyển khoản trả khách
       order: doc.id,
+      status: "Pending", // Trạng thái chờ kế toán chuyển khoản
     });
+  }
 });
 
 const Order = mongoose.model("Order", orderSchema);

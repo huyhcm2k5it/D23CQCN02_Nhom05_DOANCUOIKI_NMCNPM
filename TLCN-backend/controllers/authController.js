@@ -266,7 +266,7 @@ exports.restrictTo = (...roles) => {
   return (req, res, next) => {
     // roles ['admin', 'employee',[user]]. role='user'
     if (req.user == undefined || !roles.includes(req.user.role)) {
-      return next(new AppError("Bạn không có quyền thực hiện", 403));
+      return next(new AppError("Bạn không có quyền thực hiện!", 403));
     }
     next();
   };
