@@ -21,9 +21,67 @@ exports.checkStatusOrder = catchAsync(async (req, res, next) => {
   next();
 });
 exports.getTableOrder = factory.getTable(Order);
-exports.createOrder = factory.createOne(Order);
 exports.getOrder = factory.getOne(Order);
 exports.getAllOrders = factory.getAll(Order);
+
+exports.createOrder = catchAsync(async (req, res, next) => {
+  // 1. Lấy giỏ hàng từ Frontend gửi lên
+  const incomingCart = req.body.cart;
+  if (!incomingCart || incomingCart.length === 0) {
+    return next(new AppError("Giỏ hàng trống!", 400));
+  }
+
+  // 2. QUERY VÀO DATABASE ĐỂ CHỐT GIÁ (SNAPSHOT) - KHÔNG TIN TƯỞNG FRONTEND
+  let calculatedTotalPrice = 0;
+  const realCart = await Promise.all(
+    incomingCart.map(async (item) => {
+      const product = await Product.findById(item.product);
+      if (!product) {
+        throw new AppError(`Không tìm thấy sản phẩm ID: ${item.product}`, 404);
+      }
+
+      // LẤY GIÁ TỪ DATABASE: Ưu tiên giá promotion, nếu không có thì lấy price
+      const finalItemPrice = product.promotion ? product.promotion : product.price;
+      
+      calculatedTotalPrice += finalItemPrice * item.quantity;
+
+      // Trả về Object để nhúng (Embed) vào đơn hàng
+      return {
+        product: product._id,
+        title: product.title,
+        image: product.images[0],
+        quantity: item.quantity,
+        price: finalItemPrice // Giá đã được chốt cứng tại Server
+      };
+    })
+  );
+
+  // 3. Xử lý giảm giá 15% cho đơn đầu tiên
+  const orderHistoryCount = await Order.countDocuments({ 
+    user: req.user.id,
+    status: { $ne: "Cancelled" } 
+  });
+
+  if (orderHistoryCount === 0) {
+    calculatedTotalPrice = calculatedTotalPrice * 0.85; 
+    console.log(`Đơn hàng đầu tiên của ${req.user.name}, đã áp dụng giảm giá 15%!`);
+  }
+
+  // 4. Ghi đè dữ liệu an toàn vào req.body trước khi lưu
+  req.body.cart = realCart;
+  req.body.totalPrice = calculatedTotalPrice;
+
+  // 5. Tạo đơn hàng
+  const doc = await Order.create(req.body);
+
+  res.status(201).json({
+    status: "success",
+    data: {
+      data: doc,
+    },
+  });
+});
+
 exports.updateOrder = catchAsync(async (req, res, next) => {
   if (req.body.status == "Cancelled") {
     const cart = req.order.cart;
