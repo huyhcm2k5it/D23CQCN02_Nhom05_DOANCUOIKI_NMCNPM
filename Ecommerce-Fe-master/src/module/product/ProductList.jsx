@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ProductItem from "./ProductItem";
 import slugify from "slugify";
 import Pagination from "react-js-pagination";
 import ModalAdvanced from "../../components/Modal/ModalAdvanced";
+import { useEffect } from "react";
 import { formatPrice } from "../../utils/formatPrice";
 import { disableBodyScroll, enableBodyScroll } from "body-scroll-lock";
 
@@ -11,17 +12,15 @@ const ProductList = ({ data, handlePageClick, page, totalPage }) => {
   const navigate = useNavigate();
   const bodyStyle = document.body.style;
   const [showModal, setShowModal] = useState(false);
-  const [selectedItems, setSelectedItems] = useState([]);
 
   const handleClick = (item) => {
     const path = slugify(item.title, { strict: true });
     navigate(`/${path}/${item._id}`);
   };
+  const [selectedItems, setSelectedItems] = useState([]);
 
   const addToCompare = (item) => {
-    if (selectedItems.length < 2) {
-        setSelectedItems((prev) => [...prev, item]);
-    }
+    setSelectedItems((selectedItems) => [...selectedItems, item]);
   };
 
   useEffect(() => {
@@ -36,13 +35,13 @@ const ProductList = ({ data, handlePageClick, page, totalPage }) => {
     } else {
       enableBodyScroll(bodyStyle);
     }
-  }, [showModal, bodyStyle]);
+  }, [showModal]);
 
   const removeFromCompare = (item) => {
     const filteredItems = selectedItems.filter(
-      (product) => product._id !== item._id
+      (product) => product.id !== item.id
     );
-    setSelectedItems(filteredItems);
+    setSelectedItems((selectedItems) => filteredItems);
   };
 
   return (
@@ -89,7 +88,7 @@ const ProductList = ({ data, handlePageClick, page, totalPage }) => {
               ))}
           </div>
         </div>
-        <div className="flex justify-center items-center mt-5">
+        <div className="flex justify-center items-center">
           <Pagination
             activePage={page}
             nextPageText={">"}
@@ -111,14 +110,16 @@ const ProductList = ({ data, handlePageClick, page, totalPage }) => {
               setShowModal(false);
               setSelectedItems([]);
             }}
-            bodyClassName="w-[1050px] bg-white rounded-lg relative z-10 content overflow-hidden "
+            bodyClassName="w-[1050px] bg-white rounded-lg relative z-10 content  overflow-hidden "
           >
             <div className="overflow-y-auto h-[600px] p-10">
               <table className="table-product items-center table-fixed w-full">
                 <thead>
                   <tr>
                     <th></th>
-                    <th className="text-base font-semibold">Sản phẩm 1</th>
+                    <th className="text-base font-semibold items-start">
+                      Sản phẩm 1
+                    </th>
                     <th className="text-base font-semibold">Sản phẩm 2</th>
                   </tr>
                 </thead>
@@ -143,60 +144,271 @@ const ProductList = ({ data, handlePageClick, page, totalPage }) => {
                   <tr>
                     <td className="text-base font-semibold">Tên sản phẩm</td>
                     <td>
-                      <span className="text-base font-normal line-clamp-2" title={selectedItems[0]?.title}>
+                      <span
+                        className="text-base font-normal line-clamp-2 cursor-pointer"
+                        title={selectedItems[0]?.title}
+                      >
                         {selectedItems[0]?.title}
                       </span>
                     </td>
                     <td>
-                      <span className="text-base font-normal line-clamp-2" title={selectedItems[1]?.title}>
+                      <span
+                        className="text-base font-normal line-clamp-2 cursor-pointer"
+                        title={selectedItems[1]?.title}
+                      >
                         {selectedItems[1]?.title}
                       </span>
                     </td>
                   </tr>
                   <tr>
                     <td className="text-base font-semibold">Thương hiệu</td>
-                    <td>{selectedItems[0]?.brand?.name}</td>
-                    <td>{selectedItems[1]?.brand?.name}</td>
+                    <td>
+                      <span className="text-base font-normal">
+                        {selectedItems[0]?.brand.name}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="text-base font-normal">
+                        {selectedItems[1]?.brand.name}
+                      </span>
+                    </td>
                   </tr>
+
                   <tr>
                     <td className="text-base font-semibold">Hệ điều hành</td>
-                    <td>{selectedItems[0]?.specs?.os}</td>
-                    <td>{selectedItems[1]?.specs?.os}</td>
+                    <td>
+                      <span className="text-base font-normal">
+                        {selectedItems[0]?.os}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="text-base font-normal">
+                        {selectedItems[1]?.os}
+                      </span>
+                    </td>
                   </tr>
                   <tr>
                     <td className="text-base font-semibold">Màu sắc</td>
-                    <td>{selectedItems[0]?.specs?.color}</td>
-                    <td>{selectedItems[1]?.specs?.color}</td>
+                    <td>
+                      <span className="text-base font-normal">
+                        {selectedItems[0]?.color}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="text-base font-normal">
+                        {selectedItems[1]?.color}
+                      </span>
+                    </td>
                   </tr>
                   <tr>
                     <td className="text-base font-semibold">CPU</td>
-                    <td>{selectedItems[0]?.specs?.cpu}</td>
-                    <td>{selectedItems[1]?.specs?.cpu}</td>
+                    <td>
+                      <span className="text-base font-normal">
+                        {selectedItems[0]?.cpu}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="text-base font-normal">
+                        {selectedItems[1]?.cpu}
+                      </span>
+                    </td>
                   </tr>
                   <tr>
                     <td className="text-base font-semibold">Màn hình</td>
-                    <td>{selectedItems[0]?.specs?.screen}</td>
-                    <td>{selectedItems[1]?.specs?.screen}</td>
+                    <td>
+                      <span className="text-base font-normal">
+                        {selectedItems[0]?.screen}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="text-base font-normal">
+                        {selectedItems[1]?.screen}
+                      </span>
+                    </td>
                   </tr>
                   <tr>
                     <td className="text-base font-semibold">Graphic Card</td>
-                    <td>{selectedItems[0]?.specs?.graphicCard}</td>
-                    <td>{selectedItems[1]?.specs?.graphicCard}</td>
+                    <td>
+                      <span className="text-base font-normal">
+                        {selectedItems[0]?.graphicCard}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="text-base font-normal">
+                        {selectedItems[1]?.graphicCard}
+                      </span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="text-base font-semibold">Pin</td>
+                    <td>
+                      <span className="text-base font-normal">
+                        {selectedItems[0]?.battery}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="text-base font-normal">
+                        {selectedItems[1]?.battery}
+                      </span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="text-base font-semibold">Nhu cầu</td>
+                    <td>
+                      <span className="text-base font-normal">
+                        {selectedItems[0]?.demand}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="text-base font-normal">
+                        {selectedItems[1]?.demand}
+                      </span>
+                    </td>
                   </tr>
                   <tr>
                     <td className="text-base font-semibold">Ram</td>
-                    <td>{selectedItems[0]?.specs?.ram}</td>
-                    <td>{selectedItems[1]?.specs?.ram}</td>
+                    <td>
+                      <span className="text-base font-normal flex items-center gap-x-2">
+                        {selectedItems[0]?.ram}
+                        {Number(selectedItems[0]?.ram) -
+                          Number(selectedItems[1]?.ram) >=
+                          0 && (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth="1.5"
+                            stroke="green"
+                            className="w-10 h-10"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                        )}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="text-base font-normal flex items-center gap-x-2">
+                        {selectedItems[1]?.ram}
+                        {Number(selectedItems[1]?.ram) -
+                          Number(selectedItems[0]?.ram) >=
+                          0 && (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth="1.5"
+                            stroke="green"
+                            className="w-10 h-10"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                        )}
+                      </span>
+                    </td>
                   </tr>
                   <tr>
                     <td className="text-base font-semibold">Khối lượng</td>
-                    <td>{selectedItems[0]?.specs?.weight}</td>
-                    <td>{selectedItems[1]?.specs?.weight}</td>
+                    <td>
+                      <span className="text-base font-normal flex items-center gap-x-2">
+                        {selectedItems[0]?.weight}
+                        {selectedItems[0]?.weight - selectedItems[1]?.weight <=
+                          0 && (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth="1.5"
+                            stroke="green"
+                            className="w-10 h-10"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                        )}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="text-base font-normal flex items-center gap-x-2">
+                        {selectedItems[1]?.weight}
+                        {selectedItems[1]?.weight - selectedItems[0]?.weight <=
+                          0 && (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth="1.5"
+                            stroke="green"
+                            className="w-10 h-10"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                        )}
+                      </span>
+                    </td>
                   </tr>
                   <tr>
                     <td className="text-base font-semibold">Giá tiền</td>
-                    <td className="text-blue-700 font-bold">{formatPrice(selectedItems[0]?.promotion)}</td>
-                    <td className="text-blue-700 font-bold">{formatPrice(selectedItems[1]?.promotion)}</td>
+                    <td>
+                      <span className="text-base font-normal flex items-center gap-x-2">
+                        {formatPrice(selectedItems[0]?.promotion)}
+                        {selectedItems[0]?.promotion -
+                          selectedItems[1]?.promotion <=
+                          0 && (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth="1.5"
+                            stroke="green"
+                            className="w-10 h-10"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                        )}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="text-base font-normal flex items-center gap-x-2">
+                        {formatPrice(selectedItems[1]?.promotion)}
+                        {selectedItems[1]?.promotion -
+                          selectedItems[0]?.promotion <=
+                          0 && (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth="1.5"
+                            stroke="green"
+                            className="w-10 h-10"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                        )}
+                      </span>
+                    </td>
                   </tr>
                 </tbody>
               </table>

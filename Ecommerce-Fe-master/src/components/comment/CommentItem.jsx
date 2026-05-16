@@ -24,18 +24,18 @@ const CommentItem = ({ comment }) => {
   const params = useParams();
   const { current } = useSelector((state) => state.user);
 
-  const handleSend = async() => {
+  const handleSend = () => {
     if (current === null) {
       toast.dismiss();
       toast.warning("Vui lòng đăng nhập để thực hiện", { pauseOnHover: false });
       return;
     }
     const data = {
-      content: text,
+      comment: text,
       parent: comment.id,
       product: params.id,
     };
-    if (data.content === "") {
+    if (data.comment === "") {
       toast.dismiss();
       toast.warning("Vui lòng điền nội dung", { pauseOnHover: false });
       return;
@@ -43,20 +43,16 @@ const CommentItem = ({ comment }) => {
     if (edit) {
       try {
         const data = {
-          content: text,
+          comment: text,
           id: comment._id,
         };
-        await dispatch(updateComment(data)).unwrap();
-
         dispatch(updateComment(data));
         setEdit(false);
         setHidden(true);
         setText("");
-        toast.success("Sửa bình luận thành công!");
         return;
       } catch (error) {
         console.log(error.message);
-        toast.error("Lỗi khi sửa bình luận!");
         setEdit(false);
         return;
       }
@@ -87,7 +83,7 @@ const CommentItem = ({ comment }) => {
   const handleEdit = () => {
     setEdit(true);
     setHidden(!hidden);
-    setText(comment?.content);
+    setText(comment?.comment);
   };
 
   const handleDelete = () => {
@@ -104,13 +100,13 @@ const CommentItem = ({ comment }) => {
 
   useEffect(() => {
     const check =
-      comment?.likes?.findIndex((item) => item === current?._id) || false;
+      comment?.like?.findIndex((item) => item === current?._id) || false;
     if (check !== -1) {
       setActive(true);
     } else {
       setActive(false);
     }
-  }, [comment?.likes]);
+  }, [comment?.like]);
 
   const nestedComments = (comment.children || []).map((comment) => {
     return <CommentItem key={comment.id} comment={comment} type="child" />;
@@ -135,8 +131,8 @@ const CommentItem = ({ comment }) => {
           </div>
 
           <div className="text-[#8f8f8f] font-semibold text-base">
-            {comment?.updatedAt
-              ? formatDistance(Date.now(), new Date(comment?.updatedAt), {
+            {comment?.updateAt
+              ? formatDistance(Date.now(), new Date(comment?.updateAt), {
                   locale: viLocale,
                 }) +
                 " trước" +
@@ -152,7 +148,7 @@ const CommentItem = ({ comment }) => {
             <span className="text-base font-medium">
               {comment?.parent !== null ? "Trả lời: " : "Hỏi đáp: "}
             </span>
-            <span className="break-all">{comment?.content}</span>
+            <span className="break-all">{comment?.comment}</span>
           </div>
           <div className="flex items-center gap-x-5">
             <div className="flex items-center gap-x-1">
@@ -177,7 +173,7 @@ const CommentItem = ({ comment }) => {
                 </svg>
               </span>
               <span className="text-base font-medium">
-                {comment?.likes?.length}
+                {comment?.like?.length}
               </span>
             </div>
 

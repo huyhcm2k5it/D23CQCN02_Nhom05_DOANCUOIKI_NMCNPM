@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom"; // Thêm useNavigate
+import { Link, useParams } from "react-router-dom";
 import InformationProduct from "./information/InformationProduct";
 import InformationService from "./information/InformationService";
 import ProductDescription from "./information/ProductDescription";
@@ -18,10 +18,8 @@ import Skeleton from "../../components/skeleton/Skeleton";
 import SkeletonItem from "../../components/skeleton/SkeletonItem";
 import Comment from "../../components/comment/Comment";
 
-
 const ProductInformation = () => {
   const params = useParams();
-  const navigate = useNavigate();
   const { statusId, productId, statusProductBrand, productBrand } = useSelector(
     (state) => state.product
   );
@@ -33,17 +31,15 @@ const ProductInformation = () => {
     } catch (error) {
       console.log(error.message);
     }
-  }, [params.id, dispatch]);
+  }, [params.id]);
 
   useEffect(() => {
     try {
-      if (productId?.brand?._id) {
-        dispatch(getProductBrand(productId.brand._id));
-      }
+      dispatch(getProductBrand(productId?.brand?.id));
     } catch (error) {
       console.log(error.message);
     }
-  }, [productId?.brand, dispatch]);
+  }, [productId?.brand]);
 
   useEffect(() => {
     window.scrollTo({
@@ -59,7 +55,7 @@ const ProductInformation = () => {
     ) {
       return navigate("/verify");
     }
-  }, [navigate]);
+  }, []);
 
   return (
     <>
@@ -84,7 +80,7 @@ const ProductInformation = () => {
                 </div>
                 <div className="product-info flex flex-col p-2">
                   <Skeleton className="w-full h-5 rounded-lg" />
-                  <Skeleton className="w-3/5 h-5 rounded-lg mt-4   " />
+                  <Skeleton className="w-3/5 h-5 rounded-lg mt-4  " />
                   <div className="flex items-center gap-x-5 mt-8">
                     <Skeleton className="w-4/12 h-3 rounded-md" />
                     <Skeleton className="w-4/12 h-3 rounded-md" />

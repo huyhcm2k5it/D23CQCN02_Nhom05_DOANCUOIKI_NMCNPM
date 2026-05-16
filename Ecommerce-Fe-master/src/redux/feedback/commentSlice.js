@@ -26,7 +26,7 @@ export const updateComment = createAsyncThunk(
   "user/updateComment",
   async (payload) => {
     const data = {
-      content: payload.content,
+      comment: payload.comment,
     };
     const response = await commentApi.updateComment(data, payload.id);
     return response.data;

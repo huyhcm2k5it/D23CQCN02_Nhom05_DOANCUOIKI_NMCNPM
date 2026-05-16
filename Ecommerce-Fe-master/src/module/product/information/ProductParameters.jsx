@@ -12,47 +12,43 @@ const ProductParameters = ({ data }) => {
           </tr>
           <tr>
             <td>Bảo hành</td>
-            <td>12 tháng</td>
+            <td>12</td>
           </tr>
           <tr>
             <td>Màu sắc</td>
-            <td>{data?.specs?.color}</td> {/* THÊM .specs */}
+            <td>{data?.color}</td>
           </tr>
           <tr>
             <td>CPU</td>
-            <td>{data?.specs?.cpu}</td> {/* THÊM .specs */}
+            <td>{data?.cpu}</td>
           </tr>
           <tr>
-            <td>Chip đồ họa</td>
-            <td>{data?.specs?.graphicCard}</td> {/* THÊM .specs */}
+            <td>Chip đồ họa</td>
+            <td>{data?.graphicCard}</td>
           </tr>
           <tr>
             <td>RAM</td>
-            <td>{data?.specs?.ram}</td> {/* THÊM .specs */}
+            <td>{data?.ram}</td>
           </tr>
           <tr>
-            <td>Ổ cứng</td>
-            <td>{data?.specs?.storage}</td> {/* BỔ SUNG: thêm trường storage mới */}
-          </tr>
-          <tr>
-            <td>Màn hình</td>
-            <td>{data?.specs?.screen}</td> {/* THÊM .specs */}
+            <td>Màn hình</td>
+            <td>{data?.screen}</td>
           </tr>
           <tr>
             <td>Nhu cầu</td>
-            <td>{data?.specs?.demand}</td> {/* THÊM .specs */}
+            <td>{data?.demand} </td>
           </tr>
           <tr>
-            <td>Hệ điều hành</td>
-            <td>{data?.specs?.os}</td> {/* THÊM .specs */}
+            <td>Hệ điều hành</td>
+            <td>{data?.os}</td>
           </tr>
           <tr>
             <td>Pin</td>
-            <td>{data?.specs?.battery}</td> {/* THÊM .specs */}
+            <td>{data?.battery}</td>
           </tr>
           <tr>
-            <td>Khối lượng</td>
-            <td>{data?.specs?.weight}</td> {/* ĐÃ CÓ sẵn chữ 'kg' trong DB nên bỏ kg ở ngoài */}
+            <td>Khối lượng</td>
+            <td>{data?.weight} kg</td>
           </tr>
         </thead>
       </table>

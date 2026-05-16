@@ -26,23 +26,18 @@ const FeedbackItem = ({ data }) => {
     setShowModal(false);
   };
 
-const handleSubmit = async (values) => {
+  const handleSubmit = (values) => {
     const data1 = {
       rating: values.stars,
       review: values.content,
-      product: data._id, 
+      product: data._id,
     };
     try {
-      // Bắt buộc phải có await và unwrap()
-      await dispatch(updateFeedback(data1)).unwrap();
+      dispatch(updateFeedback(data1));
       toast.dismiss();
       toast.success("Cập nhật thành công", { pauseOnHover: false });
-      setShowModal(false); // Thành công thì mới đóng Modal
     } catch (error) {
-      toast.dismiss();
-      // Báo lỗi đỏ chót từ Backend lên màn hình
-      toast.error(error.message || "Cập nhật thất bại, vui lòng thử lại!"); 
-      console.log("Lỗi chi tiết:", error);
+      console.log(error.message);
     }
   };
 
@@ -81,15 +76,15 @@ const handleSubmit = async (values) => {
             />
             <span className="text-lg font-semibold">{data?.user?.name}</span>
           </div>
-        <div className="flex items-center justify-end gap-x-5">
+          <div className="flex items-center justify-end gap-x-5">
             <div className="text-[#8f8f8f] font-semibold text-base">
-              {data?.updatedAt && data?.updatedAt !== data?.createdAt
-                ? format(new Date(data?.updatedAt), "dd/MM/yyyy")
+              {data?.updateAt
+                ? format(new Date(data?.updateAt), "dd/MM/yyyy")
                 : format(new Date(data?.createdAt), "dd/MM/yyyy")}
             </div>
             <div className="text-[#8f8f8f] font-semibold text-base">
-              {data?.updatedAt && data?.updatedAt !== data?.createdAt
-                ? format(new Date(data?.updatedAt), "HH:mm") + " đã chỉnh sửa"
+              {data?.updateAt
+                ? format(new Date(data?.updateAt), "HH:mm") + "đã chỉnh sửa"
                 : format(new Date(data?.createdAt), "HH:mm")}
             </div>
           </div>

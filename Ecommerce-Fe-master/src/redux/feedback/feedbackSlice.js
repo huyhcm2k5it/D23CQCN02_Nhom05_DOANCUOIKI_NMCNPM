@@ -32,17 +32,13 @@ export const getFeedback = createAsyncThunk(
 
 export const updateFeedback = createAsyncThunk(
   "user/updateFeedback",
-  async (payload, { rejectWithValue }) => {
-    try {
-      const data = {
-        rating: payload.rating,
-        review: payload.review,
-      };
-      const response = await reviewApi.updateReview(data, payload.product);
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response.data); 
-    }
+  async (payload) => {
+    const data = {
+      rating: payload.rating,
+      review: payload.review,
+    };
+    const response = await reviewApi.updateReview(data, payload.product);
+    return response.data;
   }
 );
 

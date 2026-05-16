@@ -41,7 +41,7 @@ const Comment = ({ id }) => {
     }
     try {
       const data = {
-        content: text,
+        comment: text,
         product: id,
         parent: null,
       };

@@ -67,6 +67,7 @@ const ProductItem = ({
             </svg>
           </span>
         </div>
+        <div></div>
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <span className="text-sm line-through text-slate-400">
@@ -74,7 +75,7 @@ const ProductItem = ({
             </span>
             <span className="text-blue text-sm"> - {product?.percent}%</span>
           </div>
-          {selected && selected.find(item => item._id === product._id) ? (
+          {selected && selected.includes(product) ? (
             <button
               className="p-2 text-red-600 border border-solid border-red-600 rounded-lg text-sm font-medium transition-all "
               onClick={(e) => handleRemove(e, product)}
