@@ -229,7 +229,7 @@ const UserOrder = () => {
                               &nbsp;&nbsp;
                               {format(new Date(item?.createdAt), "dd/MM/yyyy")}
                             </td>
-                            <td>{item.cart[0].product.title.slice(0, 50)}</td>
+                            <td>{item.cart[0].title.slice(0, 50)}</td>
                             <td>{formatPrice(item.totalPrice)}</td>
                             {item?.status === "Processed" && (
                               <td>
@@ -282,7 +282,7 @@ const UserOrder = () => {
                               &nbsp;&nbsp;
                               {format(new Date(item?.createdAt), "dd/MM/yyyy")}
                             </td>
-                            <td>{item.cart[0].product.title.slice(0, 50)}</td>
+                            <td>{item.cart[0].title.slice(0, 50)}</td>
                             <td>{formatPrice(item.totalPrice)}</td>
                             <td>
                               <span className="p-2 rounded-lg text-white bg-orange-400">
@@ -312,7 +312,7 @@ const UserOrder = () => {
                               &nbsp;&nbsp;
                               {format(new Date(item?.createdAt), "dd/MM/yyyy")}
                             </td>
-                            <td>{item.cart[0].product.title.slice(0, 50)}</td>
+                            <td>{item.cart[0].title.slice(0, 50)}</td>
                             <td>{formatPrice(item.totalPrice)}</td>
 
                             <td>
@@ -343,7 +343,7 @@ const UserOrder = () => {
                               &nbsp;&nbsp;
                               {format(new Date(item?.createdAt), "dd/MM/yyyy")}
                             </td>
-                            <td>{item.cart[0].product.title.slice(0, 50)}</td>
+                            <td>{item.cart[0].title.slice(0, 50)}</td>
                             <td>{formatPrice(item.totalPrice)}</td>
 
                             <td>

@@ -8,43 +8,35 @@
                         </span></h5>
                 </div>
                 <div class="card-body p-4">
-                    <% data.cart.forEach(function(value) {const name=value.product.title.length>
-                        28?value.product.title.slice(0,29):value.product.title;const percent =
-                        value.product.percent?value.product.percent:0;
-                        %>
+                    <% data.cart.forEach(function(value) { 
+                        // ĐÃ SỬA: Lấy trực tiếp title từ snapshot value
+                        const name = value.title.length > 28 ? value.title.slice(0,29) : value.title; 
+                    %>
                         <div class="card shadow-0 border mb-4">
                             <div class="card-body">
                                 <div class="row">
                                     <div class="col-md-2">
-                                        <img src="<%= value.product.images[0]%>" class="img-fluid" alt="Phone">
+                                        <img src="<%= value.image %>" class="img-fluid" alt="Phone">
                                     </div>
                                     <div class="col-md-2 text-center d-flex justify-content-center align-items-center">
-                                        <p class="text-muted mb-0">
-                                            <%= name %>
-                                        </p>
+                                        <p class="text-muted mb-0"><%= name %></p>
+                                    </div>
+                                    
+                                    <div class="col-md-2 text-center d-flex justify-content-center align-items-center">
+                                        <p class="text-muted mb-0 small">SKU: <%= value.product %></p> 
                                     </div>
                                     <div class="col-md-2 text-center d-flex justify-content-center align-items-center">
-                                        <p class="text-muted mb-0 small">
-                                            <%= value.product.color%>
-                                        </p>
-                                    </div>
-                                    <div class="col-md-2 text-center d-flex justify-content-center align-items-center">
-                                        <p class="text-muted mb-0 small">Ram: <%= value.product.ram%>GB</p>
-                                    </div>
-                                    <div class="col-md-2 text-center d-flex justify-content-center align-items-center">
-                                        <p class="text-muted mb-0 small">Qty: <%= value.quantity%>
-                                        </p>
+                                        <p class="text-muted mb-0 small">Qty: <%= value.quantity %></p>
                                     </div>
                                     <div class="col-md-2 text-center d-flex justify-content-center align-items-center">
                                         <p class="text-muted mb-0 small">
-                                            <%= value.product.price%> VND <br>-<%= percent%> %
+                                            <%= value.price %> VND 
                                         </p>
                                     </div>
                                 </div>
-
                             </div>
                         </div>
-                        <% }); %>
+                    <% }); %>
 
                             <div class="card card-stepper text-black" style="border-radius: 16px;">
 
