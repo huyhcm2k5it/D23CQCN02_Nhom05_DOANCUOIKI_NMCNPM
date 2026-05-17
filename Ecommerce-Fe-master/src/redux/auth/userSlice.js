@@ -94,7 +94,7 @@ const userSlice = createSlice({
   initialState: {
     current: JSON.parse(localStorage.getItem(StorageKeys.USER)) || null,
     status: action_status.IDLE,
-    user: {},
+    user: JSON.parse(localStorage.getItem(StorageKeys.USER)) || {},
     update: false,
   },
   reducers: {
@@ -116,6 +116,7 @@ const userSlice = createSlice({
     },
     [login.fulfilled]: (state, action) => {
       state.current = action.payload;
+      state.user = action.payload;
     },
     [loginWithGoogle.fulfilled]: (state, action) => {
       state.current = action.payload;
