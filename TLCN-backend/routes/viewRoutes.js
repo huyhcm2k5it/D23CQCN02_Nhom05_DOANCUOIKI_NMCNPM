@@ -41,7 +41,7 @@ router.get("/", (req, res, next) => {
 router.get("/analytics", (req, res, next) => {
   res.status(200).render("analytic",{title:"Analytics"});
 });
-router.get("/users", (req, res, next) => {
+router.get("/users", authController.restrictTo("admin"), (req, res, next) => {
   res.status(200).render("user",{title:"Manage User"});
 });
 router.get("/products", (req, res, next) => {

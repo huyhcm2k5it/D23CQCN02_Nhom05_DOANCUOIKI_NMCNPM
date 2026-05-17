@@ -1,6 +1,0 @@
-node_modules/
-TLCN-backend/node_modules/
-Ecommerce-Fe-master/node_modules/
-TLCN-backend/config.env
-.env
-*.env
