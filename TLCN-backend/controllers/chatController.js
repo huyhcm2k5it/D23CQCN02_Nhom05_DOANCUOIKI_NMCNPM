@@ -473,3 +473,6 @@ exports.deleteConversation = catchAsync(async (req, res, next) => {
     data: null,
   });
 });
+
+exports.detectIntent = detectIntent;
+exports.extractKeywords = extractKeywords;
