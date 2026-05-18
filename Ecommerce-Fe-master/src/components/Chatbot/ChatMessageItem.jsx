@@ -40,31 +40,55 @@ const ChatMessageItem = ({ message, isUser }) => {
 
     if (rows.length === 0) return "";
 
-    return `
-      <div class="w-full max-w-full overflow-x-auto my-3 rounded-lg border border-gray-300">
-        <table class="min-w-max border-collapse text-xs">
-          <tbody>
-            ${rows
-              .map(
-                (row, rowIndex) => `
-                  <tr class="${rowIndex === 0 ? "bg-gray-200 font-semibold" : "bg-white"}">
-                    ${row
-                      .map(
-                        (cell) => `
-                          <td class="border border-gray-300 px-3 py-2 whitespace-nowrap align-top">
-                            ${formatInline(cell)}
-                          </td>
-                        `
-                      )
-                      .join("")}
-                  </tr>
-                `
-              )
-              .join("")}
-          </tbody>
-        </table>
-      </div>
-    `;
+    const headers = rows[0];
+    const numProducts = headers.length - 1;
+
+    // Nếu không có sản phẩm nào hoặc định dạng lỗi, bỏ qua
+    if (numProducts <= 0) return "";
+
+    // Render dạng đứng (Vertical Card List)
+    let html = `<div class="space-y-4 my-3">`;
+
+    for (let colIndex = 1; colIndex <= numProducts; colIndex++) {
+      const productName = headers[colIndex];
+      html += `
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden text-left">
+          <!-- Tên sản phẩm Header -->
+          <div class="bg-gray-50 border-b border-gray-150 px-3 py-2.5 flex items-center gap-2">
+            <span class="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-[10px] flex-shrink-0">
+              ${colIndex}
+            </span>
+            <span class="font-bold text-xs text-gray-800">${formatInline(productName)}</span>
+          </div>
+          <!-- Thông số chi tiết -->
+          <div class="p-3 space-y-2 text-xs">
+      `;
+
+      for (let rowIndex = 1; rowIndex < rows.length; rowIndex++) {
+        const criteriaName = rows[rowIndex][0];
+        const criteriaValue = rows[rowIndex][colIndex] || "-";
+
+        // Nhấn mạnh thuộc tính Giá
+        const isPrice = criteriaName.toLowerCase().includes("giá");
+
+        html += `
+          <div class="flex border-b border-gray-50 last:border-b-0 py-1.5 flex-wrap">
+            <span class="w-[75px] text-gray-400 font-semibold flex-shrink-0">${formatInline(criteriaName)}</span>
+            <span class="flex-1 text-gray-700 break-words ${isPrice ? "text-red-500 font-bold" : "font-medium"}">
+              ${formatInline(criteriaValue)}
+            </span>
+          </div>
+        `;
+      }
+
+      html += `
+          </div>
+        </div>
+      `;
+    }
+
+    html += `</div>`;
+    return html;
   };
 
   const formatContent = (text) => {
@@ -104,6 +128,8 @@ const ChatMessageItem = ({ message, isUser }) => {
     return htmlParts.join("");
   };
 
+  const hasTable = message.content && message.content.includes("|");
+
   return (
     <div
       className={`flex w-full min-w-0 mb-4 ${
@@ -126,7 +152,9 @@ const ChatMessageItem = ({ message, isUser }) => {
       )}
 
       <div
-        className={`w-fit max-w-[85%] min-w-0 px-4 py-3 rounded-2xl text-sm leading-relaxed break-words ${
+        className={`min-w-0 px-4 py-3 rounded-2xl text-sm leading-relaxed break-words overflow-hidden ${
+          hasTable ? "flex-1 max-w-[85%]" : "w-fit max-w-[85%]"
+        } ${
           isUser
             ? "bg-blue-500 text-white rounded-br-md"
             : "bg-gray-100 text-gray-800 rounded-bl-md"

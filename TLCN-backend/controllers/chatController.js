@@ -8,12 +8,82 @@ const Order = require("../models/orderModel");
 const Category = require("../models/categoryModel");
 const Brand = require("../models/brandModel");
 
-let genAI = null;
-function getGenAI() {
-  if (!genAI) {
-    genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  }
-  return genAI;
+function normalizeVietnameseSlang(text) {
+  if (!text) return "";
+  let norm = text.toLowerCase();
+  
+  // 1. Thay thế các cụm từ tiếng lóng/viết tắt ghép trước (tránh lỗi chia sai từ đơn)
+  const phraseDict = {
+    "áp rai": "aspire",
+    "áp do": "aspire",
+    "mắc búc": "macbook",
+    "mắc book": "macbook",
+    "lê nổ vô": "lenovo",
+    "lê nô vô": "lenovo",
+    "ác xơ": "acer",
+    "a xớt": "asus",
+    "a sút": "asus",
+    "ly dần": "legion",
+    "li dần": "legion",
+    "ly dan": "legion",
+    "li dan": "legion",
+    "víc tớt": "victus",
+    "vic tớt": "victus",
+    "víc tơ": "victus",
+    "vic tơ": "victus",
+    "víc tus": "victus",
+    "vic tus": "victus",
+    "zen búc": "zenbook",
+    "zen book": "zenbook",
+    "vi vô búc": "vivobook",
+    "vi vo búc": "vivobook",
+    "vi vô book": "vivobook",
+    "rốc strix": "rog strix",
+    "rốc": "rog",
+    "róc": "rog",
+    "sờ trích": "strix",
+    "ô men": "omen",
+    "o men": "omen",
+    "pre đa to": "predator",
+    "pờ re đa tơ": "predator",
+    "hê li ót": "helios",
+    "he li ot": "helios",
+    "la ti tút": "latitude",
+    "la ti tud": "latitude",
+    "thin bát": "thinkpad",
+    "thinh bát": "thinkpad",
+    "thin pad": "thinkpad",
+    "thinh pad": "thinkpad",
+    "ai đi a bát": "ideapad",
+    "ai đi a pad": "ideapad",
+  };
+  
+  Object.keys(phraseDict).forEach((k) => {
+    norm = norm.split(k).join(phraseDict[k]);
+  });
+
+  // 2. Tách từ đơn để thay thế chính xác tuyệt đối (tránh đè chữ như "k" trong "macbook")
+  const singleDict = {
+    "đeo": "dell",
+    "túp": "tuf",
+    "táp": "tuf",
+    "củ": "triệu",
+    "lít": "trăm",
+    "tr": "triệu",
+    "k": "ngàn",
+  };
+
+  const words = norm.split(/\s+/);
+  const mappedWords = words.map(word => {
+    // Loại bỏ tạm thời dấu câu ở hai bên để so khớp chính xác
+    const cleanWord = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "");
+    if (singleDict[cleanWord]) {
+      return word.replace(cleanWord, singleDict[cleanWord]);
+    }
+    return word;
+  });
+
+  return mappedWords.join(" ");
 }
 
 const SYSTEM_PROMPT = `Bạn là trợ lý bán hàng AI của cửa hàng bán laptop trực tuyến Laptop Shop.
@@ -32,8 +102,9 @@ Chính sách cửa hàng:
 
 Quy tắc trả lời:
 - Trả lời bằng Tiếng Việt, thân thiện, chuyên nghiệp
+- CHỈ sử dụng thông tin sản phẩm từ [DỮ LIỆU CỬA HÀNG] trong tin nhắn cuối cùng để trả lời. Tuyệt đối không sử dụng thông số kỹ thuật của các sản phẩm ở câu hỏi trước trong lịch sử nếu chúng không xuất hiện trong [DỮ LIỆU CỬA HÀNG] mới nhất.
 - Khi tư vấn sản phẩm, luôn nêu rõ: tên, giá, cấu hình chính (CPU, RAM, GPU, màn hình)
-- Khi so sánh, trình bày dạng bảng rõ ràng
+- Khi so sánh, trình bày dạng bảng rõ ràng sử dụng cú pháp bảng Markdown tiêu chuẩn
 - Nếu không có sản phẩm phù hợp trong dữ liệu, nói rõ là không tìm thấy
 - Không bịa thông tin sản phẩm, chỉ dùng dữ liệu được cung cấp
 - Khi đề cập sản phẩm, format giá tiền dạng VNĐ (ví dụ: 15.990.000đ)
@@ -94,6 +165,13 @@ function extractKeywords(message) {
     if (msg.includes(b)) keywords.push(b);
   });
 
+  const models = [
+    "aspire", "nitro", "legion", "rog", "strix", "zenbook", "latitude", "xps", "pavilion", "victus"
+  ];
+  models.forEach((m) => {
+    if (msg.includes(m)) keywords.push(m);
+  });
+
   const demands = [
     "gaming", "văn phòng", "đồ họa", "sinh viên", "lập trình",
     "mỏng nhẹ", "doanh nhân",
@@ -125,10 +203,20 @@ async function retrieveProducts(message, keywords) {
   const selectFields = "title price promotion specs brand category inventory images ratingsAverage";
 
   try {
-    // Step 1: Semantic Search via Atlas Vector Search
-    const model = getGenAI().getGenerativeModel({ model: "gemini-embedding-001" });
-    const result = await model.embedContent(message);
-    const queryVector = result.embedding.values;
+    const normMessage = normalizeVietnameseSlang(message);
+    const ollamaUrl = process.env.OLLAMA_URL || "http://localhost:11434";
+    const embedModel = process.env.OLLAMA_EMBED_MODEL || "nomic-embed-text";
+    const response = await fetch(`${ollamaUrl}/api/embeddings`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: embedModel,
+        prompt: normMessage,
+      }),
+    });
+    if (!response.ok) throw new Error("Ollama vector failed");
+    const result = await response.json();
+    const queryVector = result.embedding;
 
     const pipeline = [
       {
@@ -150,9 +238,9 @@ async function retrieveProducts(message, keywords) {
 
     const searchResults = await Product.aggregate(pipeline);
 
-    // Lọc điểm tương đồng > 0.55 (chống hỏi ngoài luồng)
+    // Lọc điểm tương đồng > 0.60 (chống hỏi ngoài luồng)
     const candidateIds = searchResults
-      .filter(p => p.score > 0.55)
+      .filter(p => p.score >= 0.60)
       .map(p => p._id);
 
     if (candidateIds.length > 0) {
@@ -165,11 +253,48 @@ async function retrieveProducts(message, keywords) {
       const hydratedProducts = await Product.find(query)
         .populate("brand category")
         .select(selectFields)
-        .limit(10)
         .lean();
 
-      if (hydratedProducts.length > 0) {
-        return hydratedProducts;
+      // Sắp xếp lại danh sách hydratedProducts để khớp chính xác thứ tự điểm số của candidateIds
+      let sortedProducts = candidateIds
+        .map(id => hydratedProducts.find(p => p._id.toString() === id.toString()))
+        .filter(Boolean);
+
+      // HYBRID RAG: Ưu tiên lọc khớp tất cả thương hiệu & dòng máy nếu được đề cập đích danh trong tin nhắn
+      const queryLower = normMessage;
+      const knownBrands = ["asus", "dell", "hp", "lenovo", "acer", "msi", "apple", "macbook", "thinkpad", "razer", "samsung", "lg", "gigabyte"];
+      const matchedBrands = knownBrands.filter(b => queryLower.includes(b));
+      
+      const knownSeries = ["aspire", "nitro", "legion", "rog", "strix", "zenbook", "latitude", "xps", "pavilion", "victus"];
+      const matchedSeriesList = knownSeries.filter(s => queryLower.includes(s));
+
+      if (matchedBrands.length > 0 || matchedSeriesList.length > 0) {
+        const exactMatches = sortedProducts.filter(p => {
+          const brandName = p.brand?.name?.toLowerCase() || "";
+          const title = p.title?.toLowerCase() || "";
+          
+          const matchB = matchedBrands.length > 0 
+            ? matchedBrands.some(b => brandName.includes(b) || title.includes(b)) 
+            : true;
+          const matchS = matchedSeriesList.length > 0 
+            ? matchedSeriesList.some(s => title.includes(s)) 
+            : true;
+          
+          return matchB && matchS;
+        });
+
+        if (exactMatches.length > 0) {
+          // Đẩy các sản phẩm khớp chính xác thương hiệu/dòng máy lên đầu tiên
+          sortedProducts = [...exactMatches, ...sortedProducts.filter(p => !exactMatches.includes(p))];
+        } else {
+          // Nếu không có sản phẩm nào trong kết quả Vector khớp thương hiệu/dòng máy được đề cập,
+          // ép buộc kích hoạt chế độ Fallback sang Keyword/Regex Search chính xác
+          sortedProducts = [];
+        }
+      }
+
+      if (sortedProducts.length > 0) {
+        return sortedProducts.slice(0, 4);
       }
     }
   } catch (error) {
@@ -187,7 +312,7 @@ async function retrieveProducts(message, keywords) {
       })
         .populate("brand category")
         .select(selectFields)
-        .limit(10)
+        .limit(4)
         .lean();
       if (textResults.length > 0) return textResults;
     } catch (e) { /* fall through */ }
@@ -205,7 +330,7 @@ async function retrieveProducts(message, keywords) {
     })
       .populate("brand category")
       .select(selectFields)
-      .limit(10)
+      .limit(4)
       .lean();
     if (regexResults.length > 0) return regexResults;
   }
@@ -214,7 +339,7 @@ async function retrieveProducts(message, keywords) {
     .populate("brand category")
     .select(selectFields)
     .sort({ price: 1 })
-    .limit(10)
+    .limit(4)
     .lean();
 
   if (fallback.length === 0 && filter.price && regexConditions.length > 0) {
@@ -222,7 +347,7 @@ async function retrieveProducts(message, keywords) {
       .populate("brand category")
       .select(selectFields)
       .sort({ price: 1 })
-      .limit(5)
+      .limit(4)
       .lean();
     return withoutPriceFallback;
   }
@@ -281,7 +406,6 @@ function formatOrderContext(orders) {
     .join("\n\n");
 }
 
-// === CONTROLLER ENDPOINTS ===
 exports.sendMessage = catchAsync(async (req, res, next) => {
   const { message, conversationId } = req.body;
   const userId = req.user.id;
@@ -290,132 +414,175 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
     return next(new AppError("Vui lòng nhập tin nhắn", 400));
   }
 
+  const normMessage = normalizeVietnameseSlang(message);
+
   let conversation;
   if (conversationId) {
-    conversation = await ChatConversation.findOne({
-      _id: conversationId,
-      user: userId,
-    });
-    if (!conversation) {
-      return next(new AppError("Không tìm thấy cuộc hội thoại", 404));
-    }
+    conversation = await ChatConversation.findOne({ _id: conversationId, user: userId });
+    if (!conversation) return next(new AppError("Không tìm thấy cuộc hội thoại", 404));
   } else {
     const title = message.length > 50 ? message.substring(0, 50) + "..." : message;
-    conversation = await ChatConversation.create({
-      user: userId,
-      title,
-    });
+    conversation = await ChatConversation.create({ user: userId, title });
   }
 
-  await ChatMessage.create({
+  const userMsgDoc = await ChatMessage.create({
     conversation: conversation._id,
     role: "user",
     content: message,
   });
 
-  const intent = detectIntent(message);
-  const keywords = extractKeywords(message);
+  const intent = detectIntent(normMessage);
+  const keywords = extractKeywords(normMessage);
 
   let context = "";
   let productIds = [];
 
   if (intent === "order") {
     const orders = await retrieveOrders(userId);
-    context = `\n\n--- DỮ LIỆU ĐƠN HÀNG CỦA KHÁCH ---\n${formatOrderContext(orders)}`;
+    context = `\n\n[DỮ LIỆU CỬA HÀNG]\n${formatOrderContext(orders)}`;
   } else if (intent === "policy") {
-    context = "\n\n--- Trả lời dựa trên chính sách cửa hàng trong System Prompt ---";
+    context = "\n\n[DỮ LIỆU CỬA HÀNG]\nChính sách cửa hàng đã có trong phần hệ thống.";
   } else {
-    const products = await retrieveProducts(message, keywords);
-    context = `\n\n--- DỮ LIỆU SẢN PHẨM TỪ CỬA HÀNG ---\n${formatProductContext(products)}`;
+    const products = await retrieveProducts(normMessage, keywords);
+    context = `\n\n[DỮ LIỆU CỬA HÀNG]\n${formatProductContext(products)}`;
     productIds = products.map((p) => p._id);
-
-    if (intent === "compare" && products.length < 2) {
-      const allProducts = await Product.find()
-        .select("title price promotion specs brand category inventory images ratingsAverage")
-        .limit(10)
-        .lean();
-      context = `\n\n--- DỮ LIỆU SẢN PHẨM TỪ CỬA HÀNG (để so sánh) ---\n${formatProductContext(allProducts)}`;
-      productIds = allProducts.map((p) => p._id);
-    }
   }
 
-  // Conversational Memory: lấy 10 tin nhắn gần nhất
-  const history = await ChatMessage.find({ conversation: conversation._id })
+  // Lấy lịch sử cũ (loại trừ tin nhắn hiện tại vừa gửi)
+  const history = await ChatMessage.find({
+    conversation: conversation._id,
+    _id: { $ne: userMsgDoc._id }
+  })
     .sort({ createdAt: -1 })
-    .limit(10)
+    .limit(9)
     .lean();
 
-  const chatHistory = history
-    .reverse()
-    .map((m) => `${m.role === "user" ? "Khách hàng" : "Trợ lý"}: ${m.content}`)
-    .join("\n");
+  const messages = [
+    { role: "system", content: SYSTEM_PROMPT }
+  ];
 
-  const fullPrompt = `${SYSTEM_PROMPT}
-${context}
+  // Đưa lịch sử cũ vào (theo thứ tự thời gian tăng dần)
+  history.reverse().forEach((m) => {
+    messages.push({ role: m.role, content: m.content });
+  });
 
---- LỊCH SỬ HỘI THOẠI GẦN ĐÂY ---
-${chatHistory}
+  // Đưa tin nhắn hiện tại kèm context vào cuối danh sách tin nhắn gửi đi
+  messages.push({ role: "user", content: message + context });
 
-Khách hàng: ${message}
+  // Cấu hình headers cho SSE
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    "Connection": "keep-alive",
+  });
 
-Trợ lý:`;
+  const firstEvent = {
+    conversationId: conversation._id,
+    products: [], // Gửi rỗng lúc đầu để chưa hiển thị gợi ý sản phẩm
+  };
+  res.write(`data: ${JSON.stringify(firstEvent)}\n\n`);
 
-  let aiResponse = "";
-  const models = ["gemini-2.5-flash", "gemini-2.0-flash"];
+  try {
+    const ollamaUrl = process.env.OLLAMA_URL || "http://localhost:11434";
+    const chatModel = process.env.OLLAMA_CHAT_MODEL || "laptop-chatbot";
+    const response = await fetch(`${ollamaUrl}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: chatModel,
+        messages: messages,
+        stream: true,
+      }),
+    });
 
-  for (const modelName of models) {
-    let success = false;
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const model = getGenAI().getGenerativeModel({ model: modelName });
-        const result = await model.generateContent(fullPrompt);
-        aiResponse = result.response.text();
-        success = true;
-        break;
-      } catch (error) {
-        console.error(`Gemini [${modelName}] attempt ${attempt + 1}:`, error.message?.substring(0, 150));
-        if ((error.message?.includes("429") || error.message?.includes("503")) && attempt < 1) {
-          await new Promise((r) => setTimeout(r, 2000));
-          continue;
+    if (!response.ok) throw new Error("Ollama API failed");
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let fullAiResponse = "";
+    let backendBuffer = "";
+    
+    // Đọc stream từ Node.js response dùng getReader() chuẩn hóa
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      backendBuffer += decoder.decode(value, { stream: true });
+      const lines = backendBuffer.split("\n");
+      backendBuffer = lines.pop() || "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (parsed.message && parsed.message.content) {
+            fullAiResponse += parsed.message.content;
+            res.write(`data: ${JSON.stringify({ chunk: parsed.message.content })}\n\n`);
+          }
+        } catch (e) {
+          // ignore parse error
         }
-        break;
       }
     }
-    if (success) break;
+
+    if (backendBuffer.trim()) {
+      try {
+        const parsed = JSON.parse(backendBuffer.trim());
+        if (parsed.message && parsed.message.content) {
+          fullAiResponse += parsed.message.content;
+          res.write(`data: ${JSON.stringify({ chunk: parsed.message.content })}\n\n`);
+        }
+      } catch (e) {}
+    }
+
+    // Đảm bảo tin nhắn lưu vào DB không được để trống (tránh ValidationError)
+    const savedResponse = fullAiResponse.trim() || "Xin lỗi, hiện tại mình đang gặp lỗi xử lý. Bạn có thể hỏi lại được không?";
+
+    await ChatMessage.create({
+      conversation: conversation._id,
+      role: "assistant",
+      content: savedResponse,
+      productRefs: productIds.slice(0, 4),
+    });
+
+    conversation.updatedAt = Date.now();
+    await conversation.save({ validateBeforeSave: false });
+
+  } catch (error) {
+    console.error("Lỗi gọi Ollama:", error);
+    const fallbackMsg = "Xin lỗi, hệ thống AI đang gặp sự cố. Vui lòng thử lại sau.";
+    res.write(`data: ${JSON.stringify({ chunk: fallbackMsg })}\n\n`);
+    
+    await ChatMessage.create({
+      conversation: conversation._id,
+      role: "assistant",
+      content: fallbackMsg,
+      productRefs: [],
+    });
   }
 
-  if (!aiResponse) {
-    aiResponse = "Xin lỗi, hệ thống AI đang gặp sự cố. Vui lòng thử lại sau hoặc liên hệ hotline để được hỗ trợ.";
+  // Gửi danh sách sản phẩm gợi ý cuối cùng sau khi đã stream hoàn tất câu trả lời của AI
+  let finalProducts = [];
+  if (productIds.length > 0) {
+    const targetIds = productIds.slice(0, 4);
+    const fetchedProds = await Product.find({ _id: { $in: targetIds } })
+      .select("_id title price promotion images slug")
+      .lean();
+    
+    // Bảo toàn thứ tự sắp xếp (Boost / Vector ranking)
+    finalProducts = targetIds
+      .map(id => fetchedProds.find(p => p._id.toString() === id.toString()))
+      .filter(Boolean);
   }
 
-  const assistantMsg = await ChatMessage.create({
-    conversation: conversation._id,
-    role: "assistant",
-    content: aiResponse,
-    productRefs: productIds.slice(0, 5),
-  });
+  const finalEvent = {
+    products: finalProducts,
+  };
+  res.write(`data: ${JSON.stringify(finalEvent)}\n\n`);
 
-  conversation.updatedAt = Date.now();
-  await conversation.save({ validateBeforeSave: false });
-
-  const referencedProducts = productIds.length > 0
-    ? await Product.find({ _id: { $in: productIds.slice(0, 5) } })
-        .select("_id title price promotion images slug")
-        .lean()
-    : [];
-
-  res.status(200).json({
-    status: "success",
-    data: {
-      conversationId: conversation._id,
-      message: {
-        role: "assistant",
-        content: aiResponse,
-        createdAt: assistantMsg.createdAt,
-      },
-      products: referencedProducts,
-    },
-  });
+  res.write("data: [DONE]\n\n");
+  res.end();
 });
 
 exports.getConversations = catchAsync(async (req, res, next) => {
