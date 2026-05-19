@@ -35,7 +35,7 @@ describe("detectIntent", () => {
       "Nếu máy bị lỗi thì đổi trả trong bao lâu và có hoàn tiền không?",
     ],
     [
-      "unknown",
+      "consult",
       "Hôm nay thời tiết thế nào?",
     ],
   ])("returns %s for Vietnamese message: %s", (expectedIntent, message) => {
