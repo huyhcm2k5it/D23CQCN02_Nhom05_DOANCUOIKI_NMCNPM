@@ -95,34 +95,90 @@ const ChatBot = () => {
     setProducts([]);
 
     try {
-      const res = await chatApi.sendMessage({
-        message: userMessage.content,
-        conversationId: activeConversation,
+      const token = localStorage.getItem("jwt"); // Token được lưu với key "jwt"
+      const baseUrl = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
+      const res = await fetch(`${baseUrl}/api/v1/chat/send`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          message: userMessage.content,
+          conversationId: activeConversation,
+        }),
       });
 
-      const data = res.data;
-      if (!activeConversation && data.conversationId) {
-        setActiveConversation(data.conversationId);
-        fetchConversations();
-      }
+      if (!res.ok) throw new Error("Network error");
 
-      setMessages((prev) => [...prev, data.message]);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let isFirstChunk = true;
 
-      if (data.products && data.products.length > 0) {
-        setProducts(data.products);
+      let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          const trimmedLine = line.trim();
+          if (!trimmedLine) continue;
+
+          if (trimmedLine.startsWith("data: ")) {
+            const dataStr = trimmedLine.slice(6).trim();
+            if (dataStr === "[DONE]") {
+              setLoading(false);
+              break;
+            }
+            try {
+              const data = JSON.parse(dataStr);
+              
+              if (data.conversationId && !activeConversation) {
+                setActiveConversation(data.conversationId);
+                fetchConversations();
+              }
+              
+              if (data.products && data.products.length > 0) {
+                setProducts(data.products);
+              }
+
+              if (data.chunk) {
+                if (isFirstChunk) {
+                  setLoading(false);
+                  setMessages(prev => [
+                    ...prev, 
+                    { role: "assistant", content: data.chunk, createdAt: new Date().toISOString() }
+                  ]);
+                  isFirstChunk = false;
+                } else {
+                  setMessages(prev => {
+                    const newMsgs = [...prev];
+                    const last = newMsgs[newMsgs.length - 1];
+                    last.content += data.chunk;
+                    return newMsgs;
+                  });
+                }
+              }
+            } catch (e) {
+              // Ignore parse errors
+            }
+          }
+        }
       }
     } catch (error) {
-      const errMsg = error.message || "Có lỗi xảy ra, vui lòng thử lại.";
+      setLoading(false);
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: errMsg,
+          content: "Có lỗi xảy ra, vui lòng thử lại.",
           createdAt: new Date().toISOString(),
         },
       ]);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -180,7 +236,7 @@ const ChatBot = () => {
                   Chat mới
                 </button>
               </div>
-              <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 w-full">
+              <div className="flex-1 overflow-y-auto">
                 {conversations.map((conv) => (
                   <div
                     key={conv._id}
@@ -217,7 +273,7 @@ const ChatBot = () => {
           )}
 
           {/* Main Chat Area */}
-          <div className="flex-1 flex flex-col min-w-0 w-full overflow-hidden">
+          <div className="flex-1 flex flex-col">
             {/* Header */}
             <div
               className="px-4 py-3 flex items-center justify-between flex-shrink-0"
@@ -251,7 +307,7 @@ const ChatBot = () => {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 min-w-0 w-full">
+            <div className="flex-1 overflow-y-auto px-4 py-4">
               {messages.length === 0 && (
                 <div className="flex flex-col items-center justify-center h-full text-center">
                   <div
@@ -344,7 +400,7 @@ const ChatBot = () => {
                   onKeyDown={handleKeyDown}
                   placeholder="Nhập câu hỏi..."
                   disabled={loading}
-                  className="flex-1 min-w-0 px-4 py-2.5 bg-gray-100 rounded-full text-sm outline-none focus:ring-2 focus:ring-blue-300 transition-all disabled:opacity-50"
+                  className="flex-1 px-4 py-2.5 bg-gray-100 rounded-full text-sm outline-none focus:ring-2 focus:ring-blue-300 transition-all disabled:opacity-50"
                 />
                 <button
                   onClick={handleSend}
