@@ -7,12 +7,9 @@ class APIFeatures {
   filter() {
     const queryObj = { ...this.queryString };
 
-    // Các field không dùng để lọc
     const excludedFields = ["page", "sort", "limit", "fields"];
     excludedFields.forEach((el) => delete queryObj[el]);
 
-    // Map query trên URL sang đúng field trong MongoDB
-    // Ví dụ: ?ram=16GB -> specs.ram
     const specsFieldMap = {
       ram: "specs.ram",
       color: "specs.color",
@@ -26,43 +23,156 @@ class APIFeatures {
       demand: "specs.demand",
     };
 
+    const colorAliases = {
+      den: ["Black", "Đen", "Den"],
+      "đen": ["Black", "Đen", "Den"],
+      black: ["Black", "Đen", "Den"],
+
+      vang: ["Gold", "Yellow", "Vàng", "Vang"],
+      "vàng": ["Gold", "Yellow", "Vàng", "Vang"],
+      gold: ["Gold", "Yellow", "Vàng", "Vang"],
+      yellow: ["Gold", "Yellow", "Vàng", "Vang"],
+
+      trang: ["White", "Trắng", "Trang"],
+      "trắng": ["White", "Trắng", "Trang"],
+      white: ["White", "Trắng", "Trang"],
+
+      bac: ["Silver", "Bạc", "Bac"],
+      "bạc": ["Silver", "Bạc", "Bac"],
+      silver: ["Silver", "Bạc", "Bac"],
+
+      xam: ["Gray", "Grey", "Xám", "Xam"],
+      "xám": ["Gray", "Grey", "Xám", "Xam"],
+      gray: ["Gray", "Grey", "Xám", "Xam"],
+      grey: ["Gray", "Grey", "Xám", "Xam"],
+    };
+
+    const mongoQuery = {};
+    const andConditions = [];
+
+    const escapeRegex = (value) => {
+      return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    };
+
+    const toArray = (value) => {
+      if (Array.isArray(value)) return value;
+
+      return String(value)
+        .split(",")
+        .map((v) => v.trim())
+        .filter(Boolean);
+    };
+
+    const normalizeRam = (value) => {
+      let v = String(value).trim().toUpperCase().replace(/\s+/g, "");
+
+      // Frontend đang gửi 4, 8, 16, 32
+      // DB lại lưu 4GB, 8GB, 16GB, 32GB
+      if (/^\d+$/.test(v)) {
+        v = `${v}GB`;
+      }
+
+      return v;
+    };
+
+    const normalizeColorToAliases = (value) => {
+      const key = String(value).trim().toLowerCase();
+      return colorAliases[key] || [String(value).trim()];
+    };
+
     Object.keys(queryObj).forEach((key) => {
-      // Tìm kiếm text
+      const value = queryObj[key];
+
+      if (
+        value === undefined ||
+        value === null ||
+        value === "" ||
+        value === "undefined"
+      ) {
+        return;
+      }
+
+      // keyword search
       if (key === "keyword") {
-        queryObj["$text"] = { $search: queryObj[key] };
-        delete queryObj[key];
+        mongoQuery.$text = { $search: value };
         return;
       }
 
-      // Nếu là field thuộc specs thì đổi key
-      if (specsFieldMap[key]) {
-        queryObj[specsFieldMap[key]] = {
-          $in: queryObj[key].split(","),
-        };
-        delete queryObj[key];
+      // Hỗ trợ dạng frontend đang gửi:
+      // promotion_gte, promotion_lte, price_gte, price_lte
+      const rangeMatch = key.match(/^(price|promotion)_(gte|gt|lte|lt)$/);
+      if (rangeMatch) {
+        const field = rangeMatch[1];
+        const operator = rangeMatch[2];
+
+        mongoQuery[field] = mongoQuery[field] || {};
+        mongoQuery[field][`$${operator}`] = Number(value);
         return;
       }
 
-      // Các field dạng khoảng giá: price, promotion
-      // Giữ nguyên để xử lý gte, lte, gt, lt ở dưới
+      // Hỗ trợ thêm dạng chuẩn Express:
+      // promotion[gte], promotion[lte]
       if (key === "price" || key === "promotion") {
+        if (typeof value === "object" && !Array.isArray(value)) {
+          mongoQuery[key] = {};
+          Object.keys(value).forEach((operator) => {
+            mongoQuery[key][`$${operator}`] = Number(value[operator]);
+          });
+        } else {
+          mongoQuery[key] = Number(value);
+        }
         return;
       }
 
-      // Các field lọc bình thường như brand, category
-      queryObj[key] = {
-        $in: queryObj[key].split(","),
+      // Cho phép frontend gửi specs.ram hoặc specs.color nếu sau này có đổi
+      if (key.startsWith("specs.")) {
+        const values = toArray(value);
+
+        andConditions.push({
+          $or: values.map((v) => ({
+            [key]: { $regex: escapeRegex(v), $options: "i" },
+          })),
+        });
+
+        return;
+      }
+
+      // Lọc các field nằm trong specs
+      if (specsFieldMap[key]) {
+        const field = specsFieldMap[key];
+        let values = toArray(value);
+
+        if (key === "ram") {
+          values = values.map(normalizeRam);
+        }
+
+        if (key === "color") {
+          values = values.flatMap(normalizeColorToAliases);
+        }
+
+        andConditions.push({
+          $or: values.map((v) => ({
+            [field]: { $regex: escapeRegex(v), $options: "i" },
+          })),
+        });
+
+        return;
+      }
+
+      // Lọc bình thường: brand, category...
+      mongoQuery[key] = {
+        $in: toArray(value),
       };
     });
 
-    // Advanced filtering: price[gte], price[lte], promotion[lt]...
-    let queryStr = JSON.stringify(queryObj);
-    queryStr = queryStr.replace(
-      /\b(gte|gt|lte|lt)\b/g,
-      (match) => `$${match}`
-    );
+    if (andConditions.length > 0) {
+      mongoQuery.$and = andConditions;
+    }
 
-    this.query = this.query.find(JSON.parse(queryStr));
+    console.log("REQ QUERY:", this.queryString);
+    console.log("MONGO FILTER:", JSON.stringify(mongoQuery, null, 2));
+
+    this.query = this.query.find(mongoQuery);
 
     return this;
   }
@@ -85,6 +195,7 @@ class APIFeatures {
     } else {
       this.query = this.query.select("-__v");
     }
+
     return this;
   }
 
@@ -94,7 +205,9 @@ class APIFeatures {
     const skip = (page - 1) * limit;
 
     this.query = this.query.skip(skip).limit(limit);
+
     return this;
   }
 }
+
 module.exports = APIFeatures;
