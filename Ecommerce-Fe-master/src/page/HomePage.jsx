@@ -20,17 +20,6 @@ const HomePage = () => {
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    if (
-      localStorage.getItem("jwt") &&
-      JSON.parse(localStorage.getItem("user")).active === "verify"
-    ) {
-      toast.dismiss();
-      toast.warning("Vui lòng xác thực tài khoản", { pauseOnHover: false });
-      return navigate("/verify");
-    }
-  }, []);
-
-  useEffect(() => {
     window.scrollTo({
       top: 0,
       behavior: "smooth",
