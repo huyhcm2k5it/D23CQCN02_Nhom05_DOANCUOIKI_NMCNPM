@@ -19,15 +19,11 @@ const cartSlice = createSlice({
       if (index >= 0) {
         if (cart[index].quantity < newItem.product.inventory) {
           cart[index].quantity += newItem.quantity;
-          toast.dismiss();
-          toast.success("Đã thêm sản phẩm vào giỏ hàng");
         } else {
           toast.dismiss();
           toast.warning("Chỉ còn 1 sản phẩm");
         }
       } else {
-        toast.dismiss();
-        toast.success("Đã thêm sản phẩm vào giỏ hàng");
         cart.push(newItem);
       }
       localStorage.setItem("cart", JSON.stringify(cart));
