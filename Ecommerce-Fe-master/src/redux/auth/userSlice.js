@@ -104,6 +104,7 @@ const userSlice = createSlice({
       localStorage.removeItem("order");
       localStorage.removeItem("keyword");
       localStorage.removeItem("tokenStream");
+      localStorage.removeItem("cart");
       state.current = null;
     },
     refresh: (state, action) => {
