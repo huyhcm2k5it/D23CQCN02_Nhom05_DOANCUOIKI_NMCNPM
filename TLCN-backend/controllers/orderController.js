@@ -6,6 +6,71 @@ const moment = require("moment");
 const mailTemplate = require("./mailTemplate");
 const Product = require("../models/productModel");
 const sendEmail = require("../utils/email");
+const Transaction = require("../models/transactionModel");
+
+const getProductIdFromCartItem = (item) => {
+  if (!item) return null;
+  if (item.product?._id) return item.product._id;
+  if (item.product?.id) return item.product.id;
+  if (item.product) return item.product;
+  if (item.id) return item.id;
+  return null;
+};
+
+const buildCheckoutSnapshot = async (cart, userId) => {
+  if (!cart || !Array.isArray(cart) || cart.length === 0) {
+    throw new AppError("Gio hang trong!", 400);
+  }
+
+  let subtotal = 0;
+  const realCart = [];
+
+  for (const item of cart) {
+    const productId = getProductIdFromCartItem(item);
+    const quantity = Number(item.quantity);
+
+    if (!productId || !Number.isInteger(quantity) || quantity < 1) {
+      throw new AppError("Du lieu gio hang khong hop le.", 400);
+    }
+
+    const product = await Product.findById(productId);
+    if (!product) {
+      throw new AppError(`Khong tim thay san pham ID: ${productId}`, 404);
+    }
+
+    if (quantity > product.inventory) {
+      const name =
+        product.title.length > 39 ? product.title.slice(0, 40) : product.title;
+      throw new AppError(`So luong hang ${name} trong kho khong du`, 400);
+    }
+
+    const finalItemPrice = product.promotion || product.price;
+    subtotal += finalItemPrice * quantity;
+
+    realCart.push({
+      product: product._id,
+      title: product.title,
+      image: product.images[0],
+      quantity,
+      price: finalItemPrice,
+    });
+  }
+
+  const orderHistoryCount = await Order.countDocuments({
+    user: userId,
+    status: { $ne: "Cancelled" },
+  });
+  const isFirstOrder = orderHistoryCount === 0;
+  const discount = isFirstOrder ? Math.round(subtotal * 0.15) : 0;
+
+  return {
+    cart: realCart,
+    subtotal,
+    discount,
+    totalPrice: subtotal - discount,
+    isFirstOrder,
+  };
+};
 
 exports.checkStatusOrder = catchAsync(async (req, res, next) => {
   if (
@@ -24,6 +89,15 @@ exports.getTableOrder = factory.getTable(Order);
 exports.getOrder = factory.getOne(Order);
 exports.getAllOrders = factory.getAll(Order);
 
+exports.getCheckoutQuote = catchAsync(async (req, res, next) => {
+  const quote = await buildCheckoutSnapshot(req.body.cart, req.user.id);
+
+  res.status(200).json({
+    status: "success",
+    data: quote,
+  });
+});
+
 exports.createOrder = catchAsync(async (req, res, next) => {
   // 1. Lấy giỏ hàng từ Frontend gửi lên
   const incomingCart = req.body.cart;
@@ -35,24 +109,36 @@ exports.createOrder = catchAsync(async (req, res, next) => {
   let calculatedTotalPrice = 0;
   const realCart = await Promise.all(
     incomingCart.map(async (item) => {
-      const product = await Product.findById(item.product);
+      const productId = getProductIdFromCartItem(item);
+      const quantity = Number(item.quantity);
+      if (!productId || !Number.isInteger(quantity) || quantity < 1) {
+        throw new AppError("Du lieu gio hang khong hop le.", 400);
+      }
+
+      const product = await Product.findById(productId);
       if (!product) {
         throw new AppError(`Không tìm thấy sản phẩm ID: ${item.product}`, 404);
       }
 
       // LẤY GIÁ TỪ DATABASE: Ưu tiên giá promotion, nếu không có thì lấy price
+      if (quantity > product.inventory) {
+        const name =
+          product.title.length > 39 ? product.title.slice(0, 40) : product.title;
+        throw new AppError(`So luong hang ${name} trong kho khong du`, 400);
+      }
+
       const finalItemPrice = product.promotion
         ? product.promotion
         : product.price;
 
-      calculatedTotalPrice += finalItemPrice * item.quantity;
+      calculatedTotalPrice += finalItemPrice * quantity;
 
       // Trả về Object để nhúng (Embed) vào đơn hàng
       return {
         product: product._id,
         title: product.title,
         image: product.images[0],
-        quantity: item.quantity,
+        quantity,
         price: finalItemPrice, // Giá đã được chốt cứng tại Server
       };
     })
@@ -65,7 +151,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
   });
 
   if (orderHistoryCount === 0) {
-    calculatedTotalPrice = calculatedTotalPrice * 0.85;
+    calculatedTotalPrice = Math.round(calculatedTotalPrice * 0.85);
     console.log(
       `Đơn hàng đầu tiên của ${req.user.name}, đã áp dụng giảm giá 15%!`
     );
@@ -83,15 +169,47 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     };
   }
 
-  if (req.body.payments) {
+  const paymentMethod = req.body.paymentInfo?.method || req.body.payments;
+  if (paymentMethod) {
+    const invoicePayment =
+      req.body.paymentInfo?.invoicePayment ||
+      (req.body.invoicePayment
+        ? JSON.stringify(req.body.invoicePayment)
+        : undefined);
+
     req.body.paymentInfo = {
-      method: req.body.payments,
-      status: "pending",
+      method: paymentMethod,
+      status:
+        req.body.paymentInfo?.status ||
+        (paymentMethod === "paypal" && invoicePayment ? "Paid" : "pending"),
+      invoicePayment,
     };
   }
 
   // 5. Tạo đơn hàng
   const doc = await Order.create(req.body);
+
+  if (doc.paymentInfo?.method === "paypal") {
+    try {
+      const invoice =
+        typeof doc.paymentInfo.invoicePayment === "string"
+          ? JSON.parse(doc.paymentInfo.invoicePayment)
+          : doc.paymentInfo.invoicePayment;
+
+      await Transaction.create({
+        user: req.user.id,
+        order: doc._id,
+        type: "payment",
+        amount: doc.totalPrice,
+        paymentMethod: "paypal",
+        transactionCode: invoice?.id,
+        status: doc.paymentInfo.status === "Paid" ? "success" : "pending",
+        invoicePayment: invoice,
+      });
+    } catch (err) {
+      console.log("Cannot save PayPal transaction:", err.message);
+    }
+  }
 
   const populatedDoc = await Order.findById(doc._id)
     .populate("user")

@@ -92,7 +92,6 @@ const PaymentPage = () => {
         };
         if (paymentMethod === "tiền mặt") {
           try {
-            dispatch(resetCart());
             const response = await orderApi.createOrder(dataAdress);
 
             const createdOrder =
@@ -108,16 +107,35 @@ const PaymentPage = () => {
             };
 
             localStorage.setItem("order", JSON.stringify(data1));
+            dispatch(resetCart());
 
             setTimeout(() => {
               navigate("/payment-cash");
             }, 100);
           } catch (error) {
-            console.log(error.message);
+            toast.dismiss();
+            toast.error(error.message || "Khong the tao don hang");
           }
         } else {
-          localStorage.setItem("order", JSON.stringify(dataAdress));
-          navigate("/payment-bank");
+          try {
+            const quoteResponse = await orderApi.getCheckoutQuote(dataAdress);
+            const quote = quoteResponse?.data || quoteResponse;
+
+            localStorage.setItem(
+              "order",
+              JSON.stringify({
+                ...dataAdress,
+                totalPrice: quote?.totalPrice || dataAdress.totalPrice,
+                subtotal: quote?.subtotal,
+                discount: quote?.discount,
+                isFirstOrder: quote?.isFirstOrder,
+              })
+            );
+            navigate("/payment-bank");
+          } catch (error) {
+            toast.dismiss();
+            toast.error(error.message || "Khong the kiem tra don hang");
+          }
         }
       }
     });
