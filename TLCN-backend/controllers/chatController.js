@@ -11,7 +11,7 @@ const Brand = require("../models/brandModel");
 function normalizeVietnameseSlang(text) {
   if (!text) return "";
   let norm = text.toLowerCase();
-  
+
   // 1. Thay thế các cụm từ tiếng lóng/viết tắt ghép trước (tránh lỗi chia sai từ đơn)
   const phraseDict = {
     "áp rai": "aspire",
@@ -39,8 +39,8 @@ function normalizeVietnameseSlang(text) {
     "vi vo búc": "vivobook",
     "vi vô book": "vivobook",
     "rốc strix": "rog strix",
-    "rốc": "rog",
-    "róc": "rog",
+    rốc: "rog",
+    róc: "rog",
     "sờ trích": "strix",
     "ô men": "omen",
     "o men": "omen",
@@ -57,24 +57,24 @@ function normalizeVietnameseSlang(text) {
     "ai đi a bát": "ideapad",
     "ai đi a pad": "ideapad",
   };
-  
+
   Object.keys(phraseDict).forEach((k) => {
     norm = norm.split(k).join(phraseDict[k]);
   });
 
   // 2. Tách từ đơn để thay thế chính xác tuyệt đối (tránh đè chữ như "k" trong "macbook")
   const singleDict = {
-    "đeo": "dell",
-    "túp": "tuf",
-    "táp": "tuf",
-    "củ": "triệu",
-    "lít": "trăm",
-    "tr": "triệu",
-    "k": "ngàn",
+    đeo: "dell",
+    túp: "tuf",
+    táp: "tuf",
+    củ: "triệu",
+    lít: "trăm",
+    tr: "triệu",
+    k: "ngàn",
   };
 
   const words = norm.split(/\s+/);
-  const mappedWords = words.map(word => {
+  const mappedWords = words.map((word) => {
     // Loại bỏ tạm thời dấu câu ở hai bên để so khớp chính xác
     const cleanWord = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "");
     if (singleDict[cleanWord]) {
@@ -158,23 +158,48 @@ function extractKeywords(message) {
   const msg = message.toLowerCase();
 
   const brands = [
-    "asus", "dell", "hp", "lenovo", "acer", "msi", "apple", "macbook",
-    "thinkpad", "razer", "samsung", "lg", "gigabyte",
+    "asus",
+    "dell",
+    "hp",
+    "lenovo",
+    "acer",
+    "msi",
+    "apple",
+    "macbook",
+    "thinkpad",
+    "razer",
+    "samsung",
+    "lg",
+    "gigabyte",
   ];
   brands.forEach((b) => {
     if (msg.includes(b)) keywords.push(b);
   });
 
   const models = [
-    "aspire", "nitro", "legion", "rog", "strix", "zenbook", "latitude", "xps", "pavilion", "victus"
+    "aspire",
+    "nitro",
+    "legion",
+    "rog",
+    "strix",
+    "zenbook",
+    "latitude",
+    "xps",
+    "pavilion",
+    "victus",
   ];
   models.forEach((m) => {
     if (msg.includes(m)) keywords.push(m);
   });
 
   const demands = [
-    "gaming", "văn phòng", "đồ họa", "sinh viên", "lập trình",
-    "mỏng nhẹ", "doanh nhân",
+    "gaming",
+    "văn phòng",
+    "đồ họa",
+    "sinh viên",
+    "lập trình",
+    "mỏng nhẹ",
+    "doanh nhân",
   ];
   demands.forEach((d) => {
     if (msg.includes(d)) keywords.push(d);
@@ -200,7 +225,8 @@ async function retrieveProducts(message, keywords) {
     }
   });
 
-  const selectFields = "title price promotion specs brand category inventory images ratingsAverage";
+  const selectFields =
+    "title price promotion specs brand category inventory images ratingsAverage";
 
   try {
     const normMessage = normalizeVietnameseSlang(message);
@@ -226,22 +252,22 @@ async function retrieveProducts(message, keywords) {
           queryVector: queryVector,
           numCandidates: 100,
           limit: 15,
-        }
+        },
       },
       {
         $project: {
           _id: 1,
-          score: { $meta: "vectorSearchScore" }
-        }
-      }
+          score: { $meta: "vectorSearchScore" },
+        },
+      },
     ];
 
     const searchResults = await Product.aggregate(pipeline);
 
     // Lọc điểm tương đồng > 0.60 (chống hỏi ngoài luồng)
     const candidateIds = searchResults
-      .filter(p => p.score >= 0.60)
-      .map(p => p._id);
+      .filter((p) => p.score >= 0.6)
+      .map((p) => p._id);
 
     if (candidateIds.length > 0) {
       // Step 2: Real-time Hydration (Giá/Tồn kho chuẩn 100%)
@@ -257,35 +283,71 @@ async function retrieveProducts(message, keywords) {
 
       // Sắp xếp lại danh sách hydratedProducts để khớp chính xác thứ tự điểm số của candidateIds
       let sortedProducts = candidateIds
-        .map(id => hydratedProducts.find(p => p._id.toString() === id.toString()))
+        .map((id) =>
+          hydratedProducts.find((p) => p._id.toString() === id.toString())
+        )
         .filter(Boolean);
 
       // HYBRID RAG: Ưu tiên lọc khớp tất cả thương hiệu & dòng máy nếu được đề cập đích danh trong tin nhắn
       const queryLower = normMessage;
-      const knownBrands = ["asus", "dell", "hp", "lenovo", "acer", "msi", "apple", "macbook", "thinkpad", "razer", "samsung", "lg", "gigabyte"];
-      const matchedBrands = knownBrands.filter(b => queryLower.includes(b));
-      
-      const knownSeries = ["aspire", "nitro", "legion", "rog", "strix", "zenbook", "latitude", "xps", "pavilion", "victus"];
-      const matchedSeriesList = knownSeries.filter(s => queryLower.includes(s));
+      const knownBrands = [
+        "asus",
+        "dell",
+        "hp",
+        "lenovo",
+        "acer",
+        "msi",
+        "apple",
+        "macbook",
+        "thinkpad",
+        "razer",
+        "samsung",
+        "lg",
+        "gigabyte",
+      ];
+      const matchedBrands = knownBrands.filter((b) => queryLower.includes(b));
+
+      const knownSeries = [
+        "aspire",
+        "nitro",
+        "legion",
+        "rog",
+        "strix",
+        "zenbook",
+        "latitude",
+        "xps",
+        "pavilion",
+        "victus",
+      ];
+      const matchedSeriesList = knownSeries.filter((s) =>
+        queryLower.includes(s)
+      );
 
       if (matchedBrands.length > 0 || matchedSeriesList.length > 0) {
-        const exactMatches = sortedProducts.filter(p => {
+        const exactMatches = sortedProducts.filter((p) => {
           const brandName = p.brand?.name?.toLowerCase() || "";
           const title = p.title?.toLowerCase() || "";
-          
-          const matchB = matchedBrands.length > 0 
-            ? matchedBrands.some(b => brandName.includes(b) || title.includes(b)) 
-            : true;
-          const matchS = matchedSeriesList.length > 0 
-            ? matchedSeriesList.some(s => title.includes(s)) 
-            : true;
-          
+
+          const matchB =
+            matchedBrands.length > 0
+              ? matchedBrands.some(
+                  (b) => brandName.includes(b) || title.includes(b)
+                )
+              : true;
+          const matchS =
+            matchedSeriesList.length > 0
+              ? matchedSeriesList.some((s) => title.includes(s))
+              : true;
+
           return matchB && matchS;
         });
 
         if (exactMatches.length > 0) {
           // Đẩy các sản phẩm khớp chính xác thương hiệu/dòng máy lên đầu tiên
-          sortedProducts = [...exactMatches, ...sortedProducts.filter(p => !exactMatches.includes(p))];
+          sortedProducts = [
+            ...exactMatches,
+            ...sortedProducts.filter((p) => !exactMatches.includes(p)),
+          ];
         } else {
           // Nếu không có sản phẩm nào trong kết quả Vector khớp thương hiệu/dòng máy được đề cập,
           // ép buộc kích hoạt chế độ Fallback sang Keyword/Regex Search chính xác
@@ -298,7 +360,10 @@ async function retrieveProducts(message, keywords) {
       }
     }
   } catch (error) {
-    console.error("Lỗi Vector Search (fallback về Search thường):", error.message);
+    console.error(
+      "Lỗi Vector Search (fallback về Search thường):",
+      error.message
+    );
   }
 
   // --- FALLBACK: Keyword/Regex search ---
@@ -315,7 +380,9 @@ async function retrieveProducts(message, keywords) {
         .limit(4)
         .lean();
       if (textResults.length > 0) return textResults;
-    } catch (e) { /* fall through */ }
+    } catch (e) {
+      /* fall through */
+    }
   }
 
   let regexConditions = [];
@@ -365,7 +432,8 @@ async function retrieveOrders(userId) {
 
 // === FORMAT CONTEXT: Adapted for specs object ===
 function formatProductContext(products) {
-  if (!products || products.length === 0) return "Không tìm thấy sản phẩm phù hợp trong cửa hàng.";
+  if (!products || products.length === 0)
+    return "Không tìm thấy sản phẩm phù hợp trong cửa hàng.";
 
   return products
     .map((p, i) => {
@@ -374,7 +442,11 @@ function formatProductContext(products) {
       const s = p.specs || {};
       return `[Sản phẩm ${i + 1}] ID: ${p._id}
 - Tên: ${p.title}
-- Giá: ${p.price?.toLocaleString("vi-VN")}đ${p.promotion ? ` (Giảm còn ${p.promotion?.toLocaleString("vi-VN")}đ)` : ""}
+- Giá: ${p.price?.toLocaleString("vi-VN")}đ${
+        p.promotion
+          ? ` (Giảm còn ${p.promotion?.toLocaleString("vi-VN")}đ)`
+          : ""
+      }
 - CPU: ${s.cpu || "N/A"}
 - RAM: ${s.ram || "N/A"}
 - Màn hình: ${s.screen || "N/A"}
@@ -395,7 +467,8 @@ function formatOrderContext(orders) {
 
   return orders
     .map((o, i) => {
-      const items = o.cart?.map((c) => c.product?.title || "Sản phẩm").join(", ") || "N/A";
+      const items =
+        o.cart?.map((c) => c.product?.title || "Sản phẩm").join(", ") || "N/A";
       return `[Đơn hàng ${i + 1}] Mã: ${o._id}
 - Sản phẩm: ${items}
 - Tổng tiền: ${o.totalPrice?.toLocaleString("vi-VN")}đ
@@ -418,10 +491,15 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
 
   let conversation;
   if (conversationId) {
-    conversation = await ChatConversation.findOne({ _id: conversationId, user: userId });
-    if (!conversation) return next(new AppError("Không tìm thấy cuộc hội thoại", 404));
+    conversation = await ChatConversation.findOne({
+      _id: conversationId,
+      user: userId,
+    });
+    if (!conversation)
+      return next(new AppError("Không tìm thấy cuộc hội thoại", 404));
   } else {
-    const title = message.length > 50 ? message.substring(0, 50) + "..." : message;
+    const title =
+      message.length > 50 ? message.substring(0, 50) + "..." : message;
     conversation = await ChatConversation.create({ user: userId, title });
   }
 
@@ -441,7 +519,8 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
     const orders = await retrieveOrders(userId);
     context = `\n\n[DỮ LIỆU CỬA HÀNG]\n${formatOrderContext(orders)}`;
   } else if (intent === "policy") {
-    context = "\n\n[DỮ LIỆU CỬA HÀNG]\nChính sách cửa hàng đã có trong phần hệ thống.";
+    context =
+      "\n\n[DỮ LIỆU CỬA HÀNG]\nChính sách cửa hàng đã có trong phần hệ thống.";
   } else {
     const products = await retrieveProducts(normMessage, keywords);
     context = `\n\n[DỮ LIỆU CỬA HÀNG]\n${formatProductContext(products)}`;
@@ -451,15 +530,13 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
   // Lấy lịch sử cũ (loại trừ tin nhắn hiện tại vừa gửi)
   const history = await ChatMessage.find({
     conversation: conversation._id,
-    _id: { $ne: userMsgDoc._id }
+    _id: { $ne: userMsgDoc._id },
   })
     .sort({ createdAt: -1 })
     .limit(9)
     .lean();
 
-  const messages = [
-    { role: "system", content: SYSTEM_PROMPT }
-  ];
+  const messages = [{ role: "system", content: SYSTEM_PROMPT }];
 
   // Đưa lịch sử cũ vào (theo thứ tự thời gian tăng dần)
   history.reverse().forEach((m) => {
@@ -473,7 +550,7 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",
-    "Connection": "keep-alive",
+    Connection: "keep-alive",
   });
 
   const firstEvent = {
@@ -484,7 +561,7 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
 
   try {
     const ollamaUrl = process.env.OLLAMA_URL || "http://localhost:11434";
-    const chatModel = process.env.OLLAMA_CHAT_MODEL || "laptop-chatbot";
+    const chatModel = process.env.OLLAMA_CHAT_MODEL || "qwen2.5:7b";
     const response = await fetch(`${ollamaUrl}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -501,7 +578,7 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
     const decoder = new TextDecoder("utf-8");
     let fullAiResponse = "";
     let backendBuffer = "";
-    
+
     // Đọc stream từ Node.js response dùng getReader() chuẩn hóa
     while (true) {
       const { done, value } = await reader.read();
@@ -518,7 +595,9 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
           const parsed = JSON.parse(trimmed);
           if (parsed.message && parsed.message.content) {
             fullAiResponse += parsed.message.content;
-            res.write(`data: ${JSON.stringify({ chunk: parsed.message.content })}\n\n`);
+            res.write(
+              `data: ${JSON.stringify({ chunk: parsed.message.content })}\n\n`
+            );
           }
         } catch (e) {
           // ignore parse error
@@ -531,13 +610,17 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
         const parsed = JSON.parse(backendBuffer.trim());
         if (parsed.message && parsed.message.content) {
           fullAiResponse += parsed.message.content;
-          res.write(`data: ${JSON.stringify({ chunk: parsed.message.content })}\n\n`);
+          res.write(
+            `data: ${JSON.stringify({ chunk: parsed.message.content })}\n\n`
+          );
         }
       } catch (e) {}
     }
 
     // Đảm bảo tin nhắn lưu vào DB không được để trống (tránh ValidationError)
-    const savedResponse = fullAiResponse.trim() || "Xin lỗi, hiện tại mình đang gặp lỗi xử lý. Bạn có thể hỏi lại được không?";
+    const savedResponse =
+      fullAiResponse.trim() ||
+      "Xin lỗi, hiện tại mình đang gặp lỗi xử lý. Bạn có thể hỏi lại được không?";
 
     await ChatMessage.create({
       conversation: conversation._id,
@@ -548,12 +631,12 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
 
     conversation.updatedAt = Date.now();
     await conversation.save({ validateBeforeSave: false });
-
   } catch (error) {
     console.error("Lỗi gọi Ollama:", error);
-    const fallbackMsg = "Xin lỗi, hệ thống AI đang gặp sự cố. Vui lòng thử lại sau.";
+    const fallbackMsg =
+      "Xin lỗi, hệ thống AI đang gặp sự cố. Vui lòng thử lại sau.";
     res.write(`data: ${JSON.stringify({ chunk: fallbackMsg })}\n\n`);
-    
+
     await ChatMessage.create({
       conversation: conversation._id,
       role: "assistant",
@@ -569,10 +652,10 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
     const fetchedProds = await Product.find({ _id: { $in: targetIds } })
       .select("_id title price promotion images slug")
       .lean();
-    
+
     // Bảo toàn thứ tự sắp xếp (Boost / Vector ranking)
     finalProducts = targetIds
-      .map(id => fetchedProds.find(p => p._id.toString() === id.toString()))
+      .map((id) => fetchedProds.find((p) => p._id.toString() === id.toString()))
       .filter(Boolean);
   }
 
