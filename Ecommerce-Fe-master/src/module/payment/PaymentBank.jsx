@@ -77,7 +77,9 @@ const PaymentBank = () => {
             const quoteResponse = await orderApi.getCheckoutQuote(dataOrder);
             const quote = quoteResponse?.data || quoteResponse;
             const totalPrice = quote?.totalPrice || dataOrder?.totalPrice;
-            const usdValue = Math.max(totalPrice / VND_PER_USD, 0.01).toFixed(2);
+            const usdValue = Math.max(totalPrice / VND_PER_USD, 0.01).toFixed(
+              2
+            );
 
             localStorage.setItem(
               "order",
@@ -135,7 +137,13 @@ const PaymentBank = () => {
             };
             try {
               await orderApi.createOrder(data1);
-              dispatch(resetCart());
+
+              if (dataOrder?.checkoutType === "cart") {
+                dispatch(resetCart());
+              } else {
+                localStorage.removeItem("buyNowItem");
+              }
+
               localStorage.removeItem("order");
               navigate("/account/orders");
             } catch (error) {
