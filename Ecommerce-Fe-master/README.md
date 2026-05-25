@@ -22,6 +22,7 @@ Tính năng nổi bật
 
 ## Cấu trúc thư mục
 
+```text
 Ecommerce-Fe-master/
 ├── public/                    # Static assets (ảnh, banner, logo)
 │   └── images/
@@ -75,6 +76,7 @@ Ecommerce-Fe-master/
 ├── vite.config.js
 ├── tailwind.config.cjs
 └── package.json
+```
 
 ## Hướng dẫn cài đặt
 
@@ -104,24 +106,6 @@ Tạo file .env tại thư mục gốc với nội dung sau:
 
     VITE_STREAM_API_KEY=your_stream_api_key
 
-## Các trang chính
-
-/                              # Trang chủ
-├── sign-in                    # Đăng nhập
-├── sign-up                    # Đăng ký
-├── verify                     # Xác thực email
-├── forgot-password            # Quên mật khẩu
-├── reset-password/:token      # Đặt lại mật khẩu
-├── product                    # Danh sách & lọc sản phẩm
-├── :slug/:id                  # Chi tiết sản phẩm
-├── cart                       # Giỏ hàng
-├── checkout                   # Trang thanh toán
-└── account                    # Thông tin tài khoản
-    ├── orders                 # Lịch sử đơn hàng
-    │   └── :id                # Chi tiết đơn hàng
-    ├── address                # Quản lý địa chỉ
-    └── reset-password         # Cập nhật mật khẩu
-
 ### Kết quả đạt được
 
 ChatBot
@@ -130,7 +114,7 @@ ChatBot
 
 ![1779668958407](image/README/1779668958407.png)       ![1779668969766](image/README/1779668969766.png)
 
-![1779668995478](image/README/1779668995478.png)  
+![1779668995478](image/README/1779668995478.png)
 
 #### Trang chủ
 
@@ -165,7 +149,6 @@ ChatBot
 ![Đánh giá sao và nhận xét](https://res.cloudinary.com/davolb88z/image/upload/v1779632697/DanhGia_sfdc78.jpg)
 
 #### Chức năng thanh toán
-
 
 ![1779668673354](image/README/1779668673354.png)
 
