@@ -82,7 +82,7 @@ Ecommerce-Fe-master/
 
 1. Clone repository
 
-- git clonhttps://github.com/huyhcm2k5it/D23CQCN02_Nhom05_DOANCUOIKI_NMCNPM
+- git clone :https://github.com/huyhcm2k5it/D23CQCN02_Nhom05_DOANCUOIKI_NMCNPM.git
 - `cd Ecommerce-Fe-master`
 
 2. Cài đặt dependencies
