@@ -234,31 +234,88 @@ exports.updateOrder = catchAsync(async (req, res, next) => {
       });
     }
   }
+
   const doc = await Order.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
     runValidators: true,
   });
+
   if (!doc) {
     return next(new AppError("Không tìm thấy dữ liệu với ID này", 404));
   }
-  try {
-    const domain = `https://hctech.onrender.com`;
-    const message = mailTemplate(doc, domain);
-    await sendEmail({
-      email: doc.user.email,
-      subject: "Cập nhật trạng thái đơn hàng",
-      message,
-    });
-  } catch (err) {
-    console.log(err);
-  } finally {
-    return res.status(200).json({
-      status: "success",
-      data: {
-        data: doc,
-      },
-    });
+
+  // Bổ sung: chỉ gửi mail khi có cập nhật trạng thái đơn hàng
+  if (req.body.status) {
+    try {
+      // Lấy lại đơn hàng đầy đủ user và product để template mail cũ đọc được
+      const populatedOrder = await Order.findById(doc._id)
+        .populate({
+          path: "user",
+          select: "name email",
+        })
+        .populate("cart.product");
+
+      if (populatedOrder && populatedOrder.user && populatedOrder.user.email) {
+        // Chuyển sang object thường để bổ sung field address cho mailTemplate cũ
+        const mailData = populatedOrder.toObject();
+
+        // mailTemplate cũ đang đọc data.address,
+        // còn Order mới đang lưu địa chỉ trong shippingDetails.address
+        mailData.address =
+          mailData.address ||
+          mailData.shippingDetails?.address ||
+          "Chưa có địa chỉ";
+
+        // Đảm bảo cart có dữ liệu đúng cho template cũ
+        mailData.cart = (mailData.cart || []).map((item) => {
+          const product = item.product || {};
+
+          return {
+            ...item,
+            product: {
+              ...product,
+              images: product.images || (item.image ? [item.image] : []),
+              title: product.title || item.title || "Sản phẩm",
+              color:
+                product.color ||
+                product.specs?.color ||
+                item.color ||
+                "",
+              promotion:
+                product.promotion ||
+                item.price ||
+                product.price ||
+                0,
+            },
+          };
+        });
+
+        const domain = process.env.CLIENT_URL || "http://localhost:5173";
+        const message = mailTemplate(mailData, domain);
+
+        await sendEmail({
+          email: populatedOrder.user.email,
+          subject: "Cập nhật trạng thái đơn hàng",
+          message,
+        });
+
+        console.log(
+          `Đã gửi email cập nhật trạng thái đơn hàng đến ${populatedOrder.user.email}`
+        );
+      } else {
+        console.log("Không gửi email vì đơn hàng không có email người dùng.");
+      }
+    } catch (err) {
+      console.log("Lỗi gửi email cập nhật trạng thái đơn hàng:", err.message);
+    }
   }
+
+  return res.status(200).json({
+    status: "success",
+    data: {
+      data: doc,
+    },
+  });
 });
 exports.deleteOrder = factory.deleteOne(Order);
 exports.isOwner = factory.checkPermission(Order);
