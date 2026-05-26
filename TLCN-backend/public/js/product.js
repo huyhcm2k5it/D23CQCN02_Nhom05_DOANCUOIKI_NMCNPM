@@ -140,6 +140,7 @@ $("#add_data").click(function () {
   $("#action_button").text("Add");
   $(".img-show").empty();
   $(".mb-2").show();
+  $(".img-all").show();
 
   $("#action_modal").modal("show");
 });
@@ -155,32 +156,50 @@ $(document).on("click", ".edit", function () {
   $("#action_button").text("Edit");
 
   $("#action_modal").modal("show");
-  $(".mb-2").hide();
+
+  $(".mb-2").show();
+
+  $(".img-all").hide();
+
   $(".img-show").empty();
-  $(".edit-show").show();
 
   $.ajax({
     url: `/api/v1/products/${id}`,
     method: "GET",
     success: function (data) {
       const product = data.data.data;
+      const specs = product.specs || {};
+
       $("#id").val(id);
       $("#title").val(product.title);
-      $("#category").val(product.category.id).trigger("change");
-      $("#brand").val(product.brand.id).trigger("change");
-      $("#demand").val(product.demand).trigger("change");
-      $("#color").val(product.color).trigger("change");
+
+      $("#category")
+        .val(product.category?._id || product.category?.id || product.category)
+        .trigger("change");
+
+      $("#brand")
+        .val(product.brand?._id || product.brand?.id || product.brand)
+        .trigger("change");
+
+      $("#demand").val(specs.demand).trigger("change");
+      $("#color").val(specs.color).trigger("change");
+
       $("#price").val(product.price);
       $("#promotion").val(product.promotion);
-      $("#weight").val(product.weight);
-      $("#ram").val(product.ram);
-      $("#battery").val(product.battery);
-      $("#cpu").val(product.cpu);
-      $("#os").val(product.os);
-      $("#screen").val(product.screen);
-      $("#graphicCard").val(product.graphicCard);
 
-      tinymce.get("description").setContent(product.description);
+      $("#weight").val(specs.weight);
+      $("#ram").val(specs.ram);
+      $("#battery").val(specs.battery);
+      $("#cpu").val(specs.cpu);
+      $("#os").val(specs.os);
+      $("#screen").val(specs.screen);
+      $("#graphicCard").val(specs.graphicCard);
+
+      if (tinymce.get("description")) {
+        tinymce.get("description").setContent(product.description || "");
+      } else {
+        $("#description").val(product.description || "");
+      }
     },
   });
 });
