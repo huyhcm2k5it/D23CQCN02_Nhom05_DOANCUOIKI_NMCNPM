@@ -56,7 +56,7 @@ router.get("/orders/:id", async (req, res, next) => {
     const data = await Order.findById(id);
     let total = 0;
     data.cart.forEach((value) => {
-      total += value.product.price * value.quantity;
+      total += (value.price || 0) * value.quantity;
     });
     data.total = total;
     const theDate = new Date(Date.parse(data.createdAt));

@@ -26,11 +26,15 @@
         <div class="card-body">
 
           <% data.cart.forEach(function(value){ 
-            const name = value.product.title.length > 28 
-              ? value.product.title.slice(0,29) 
-              : value.product.title;
-
-            const percent = value.product.percent ? value.product.percent : 0;
+            const title = value.title || "Sản phẩm";
+            const name = title.length > 28 
+              ? title.slice(0,29) 
+              : title;
+            const rawImage = value.image || "";
+            const image = rawImage.startsWith("http://")
+              ? rawImage.replace("http://", "https://")
+              : rawImage;
+            const price = value.price || 0;
           %>
 
           <div class="card mb-3 border-0 shadow-sm" style="border-radius:12px;">
@@ -40,17 +44,18 @@
               <div class="row align-items-center">
 
                 <div class="col-md-2 text-center">
-                  <img src="<%= value.product.images[0] %>"
+                  <img src="<%= image || '/images/unnamed.jpg' %>"
+                       onerror="this.src='/images/unnamed.jpg'"
                        style="width:70px; height:70px; object-fit:cover; border-radius:10px;">
                 </div>
 
                 <div class="col-md-3">
                   <div class="fw-semibold"><%= name %></div>
-                  <small class="text-muted"><%= value.product.color %></small>
+                  <small class="text-muted">SKU: <%= value.product %></small>
                 </div>
 
                 <div class="col-md-2 text-center">
-                  RAM: <%= value.product.ram %>GB
+                  Giá
                 </div>
 
                 <div class="col-md-2 text-center">
@@ -59,9 +64,8 @@
 
                 <div class="col-md-3 text-end">
                   <div class="fw-bold text-danger">
-                    <%= value.product.price %> VND
+                    <%= price %> VND
                   </div>
-                  <small class="text-muted">-<%= percent %>%</small>
                 </div>
 
               </div>
@@ -87,7 +91,7 @@
 
             <div class="d-flex justify-content-between">
               <span class="text-muted"><i class="fa-solid fa-credit-card"></i> Thanh toán:</span>
-              <strong><%= data.payments %></strong>
+              <strong><%= data.paymentInfo && data.paymentInfo.method ? data.paymentInfo.method : "" %></strong>
             </div>
 
           </div>
