@@ -42,20 +42,35 @@ const UserOrder = () => {
   }, [current]);
 
   useEffect(() => {
-    try {
+    if (!current?._id) return;
+
+    const data = {
+      id: current._id,
+      page: page,
+      status: state,
+      limit: 5,
+    };
+
+    dispatch(getOrder(data));
+    dispatch(refresh());
+  }, [current?._id, page, state, update, dispatch]);
+
+  useEffect(() => {
+    if (!current?._id) return;
+
+    const intervalId = setInterval(() => {
       const data = {
         id: current._id,
         page: page,
         status: state,
         limit: 5,
       };
+
       dispatch(getOrder(data));
-      dispatch(refresh());
-      setState(params.status);
-    } catch (error) {
-      console.log(error.message);
-    }
-  }, [page, state, params.status, update]);
+    }, 3000);
+
+    return () => clearInterval(intervalId);
+  }, [current?._id, page, state, dispatch]);
 
   const handleClick = (e) => {
     setState(e.target.value);
@@ -77,9 +92,7 @@ const UserOrder = () => {
         <div className="flex items-center gap-x-3">
           <button
             className={`flex items-center gap-x-3 cursor-pointer py-2 px-4 text-base font-medium rounded-lg border border-gray-300 ${
-              state === "All" || state === undefined
-                ? "bg-blue-500 text-white"
-                : ""
+              state === "All" || !state ? "bg-blue-500 text-white" : ""
             }`}
             value="All"
             onClick={handleClick}
@@ -94,6 +107,15 @@ const UserOrder = () => {
             onClick={handleClick}
           >
             Đang xử lý
+          </button>
+          <button
+            className={`flex items-center gap-x-3 cursor-pointer py-2 px-4 text-base font-medium rounded-lg border border-gray-300 ${
+              state === "Delivery" ? "bg-blue-500 text-white" : ""
+            }`}
+            value="Delivery"
+            onClick={handleClick}
+          >
+            Đang giao hàng
           </button>
           <button
             className={`flex items-center gap-x-3 cursor-pointer py-2 px-4  text-base font-medium rounded-lg border border-gray-300 ${
@@ -216,7 +238,7 @@ const UserOrder = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {(state === "All" || state === undefined) && (
+                  {(state === "All" || !state) && (
                     <>
                       {order?.length > 0 &&
                         order.map((item) => (
@@ -265,6 +287,13 @@ const UserOrder = () => {
                                 </span>
                               </td>
                             )}
+                            {item?.status === "Delivery" && (
+                              <td>
+                                <span className="p-2 rounded-lg text-white bg-yellow-500">
+                                  Đang giao hàng
+                                </span>
+                              </td>
+                            )}
                           </tr>
                         ))}
                     </>
@@ -293,6 +322,37 @@ const UserOrder = () => {
                             <td>
                               <span className="p-2 rounded-lg text-white bg-orange-400">
                                 Đang xử lý
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                    </>
+                  )}
+                  {state === "Delivery" && (
+                    <>
+                      {order?.length > 0 &&
+                        order.map((item) => (
+                          <tr className="text-base" key={item._id}>
+                            <td
+                              className="cursor-pointer text-blue-600 hover:text-blue-900"
+                              onClick={() =>
+                                navigate(`/account/orders/${item._id}`)
+                              }
+                              title={item._id}
+                            >
+                              {item._id.slice(0, 10)}
+                            </td>
+                            <td>
+                              {format(new Date(item?.createdAt), "HH:mm")}
+                              &nbsp;&nbsp;
+                              {format(new Date(item?.createdAt), "dd/MM/yyyy")}
+                            </td>
+                            <td>{getFirstProductTitle(item)}</td>
+                            <td>{formatPrice(item.totalPrice)}</td>
+
+                            <td>
+                              <span className="p-2 rounded-lg text-white bg-yellow-500">
+                                Đang giao hàng
                               </span>
                             </td>
                           </tr>
@@ -382,7 +442,7 @@ const UserOrder = () => {
       )}
       {status === action_status.FAILED && (
         <>
-          {(state === "All" || state === undefined) && (
+          {(state === "All" || !state) && (
             <div className="bg-white container rounded-lg h-[400px] flex flex-col items-center justify-center gap-y-3 ">
               <img
                 src="../images/logo-cart.png"
@@ -415,6 +475,18 @@ const UserOrder = () => {
               />
               <span className="text-lg font-medium text-gray-400">
                 Hiện không có đơn hàng nào chờ xử lý
+              </span>
+            </div>
+          )}
+          {state === "Delivery" && (
+            <div className="bg-white container rounded-lg h-[400px] flex flex-col items-center justify-center gap-y-3 ">
+              <img
+                src="../images/logo-cart.png"
+                alt=""
+                className="w-[250px] h-[250px]"
+              />
+              <span className="text-lg font-medium text-gray-400">
+                Hiện không có đơn hàng nào đang giao
               </span>
             </div>
           )}

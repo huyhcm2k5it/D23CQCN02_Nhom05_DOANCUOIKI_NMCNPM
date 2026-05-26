@@ -68,7 +68,6 @@ $(document).on("click", ".edit", function () {
       const brand = data.data.data;
       $("#name").val(brand.name);
       $("#id").val(brand._id);
-
     },
   });
 });
@@ -76,7 +75,7 @@ $(document).on("click", ".edit", function () {
 $(document).on("click", ".delete", function () {
   const id = $(this).data("id");
 
-  if (confirm("Are you sure you want to delete this brand?")) {
+  if (confirm("Bạn có chắc muốn cập nhật trạng thái đơn hàng không?")) {
     try {
       $.ajax({
         url: `/api/v1/brands/${id}`,
