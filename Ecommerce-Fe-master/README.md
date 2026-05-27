@@ -82,8 +82,7 @@ Ecommerce-Fe-master/
 
 1. Clone repository
 
-- git clone :https://github.com/huyhcm2k5it/D23CQCN02_Nhom05_DOANCUOIKI_NMCNPM.git
-- `cd Ecommerce-Fe-master`
+- git clone https://github.com/vandat-snk/N19-TTCS-LapTopShop.git
 
 2. Cài đặt dependencies
    `npm install`
@@ -92,19 +91,6 @@ Ecommerce-Fe-master/
 4. Chạy ở chế độ development
    `npm run dev`
    Ứng dụng sẽ chạy tại http://localhost:5173
-
-## Biến môi trường
-
-Tạo file .env tại thư mục gốc với nội dung sau:
-
-    VITE_API_URL=http://127.0.0.1:5000
-        VITE_PAYPAL_CLIENT_ID=your_paypal_client_id
-
-    VITE_FIREBASE_API_KEY=your_firebase_api_key
-        VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-        VITE_FIREBASE_PROJECT_ID=your_project_id
-
-    VITE_STREAM_API_KEY=your_stream_api_key
 
 ### Kết quả đạt được
 
