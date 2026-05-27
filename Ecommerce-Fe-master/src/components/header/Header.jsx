@@ -5,9 +5,9 @@ const Header = () => {
   return (
     <header className="h-[50px] bg-primary border-b-2 border-b-white text-white mx-auto">
       <div className="flex items-center container justify-between h-full">
-        <div className="text-base">
-          Giảm giá lên đến 35% cho đơn hàng đầu tiên
-        </div>
+        <span className="text-white text-base">
+          Giảm giá lên đến 15% cho đơn hàng đầu tiên
+        </span>
         <div className="flex items-center justify-center">
           <Link
             to="/"
