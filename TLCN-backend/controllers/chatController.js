@@ -292,7 +292,7 @@ async function retrieveProducts(message, keywords) {
           model: process.env.OLLAMA_EMBED_MODEL || "nomic-embed-text",
           prompt: queryLower,
         }),
-      },
+      }
     );
 
     if (response.ok) {
@@ -327,7 +327,7 @@ async function retrieveProducts(message, keywords) {
         // 3. Xếp hạng: Ưu tiên lọc khớp tất cả thương hiệu & dòng máy nếu được đề cập đích danh
         let sorted = candidateIds
           .map((id) =>
-            hydratedProducts.find((p) => p._id.toString() === id.toString()),
+            hydratedProducts.find((p) => p._id.toString() === id.toString())
           )
           .filter(Boolean);
 
@@ -566,7 +566,7 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
 
   try {
     const ollamaUrl = process.env.OLLAMA_URL || "http://localhost:11434";
-    const chatModel = process.env.OLLAMA_CHAT_MODEL || "laptop-chatbot";
+    const chatModel = process.env.OLLAMA_CHAT_MODEL || "qwen2.5:7b";
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 40000); // 40 seconds timeout
@@ -611,7 +611,7 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
           if (parsed.message && parsed.message.content) {
             fullAiResponse += parsed.message.content;
             res.write(
-              `data: ${JSON.stringify({ chunk: parsed.message.content })}\n\n`,
+              `data: ${JSON.stringify({ chunk: parsed.message.content })}\n\n`
             );
           }
         } catch (e) {
@@ -626,7 +626,7 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
         if (parsed.message && parsed.message.content) {
           fullAiResponse += parsed.message.content;
           res.write(
-            `data: ${JSON.stringify({ chunk: parsed.message.content })}\n\n`,
+            `data: ${JSON.stringify({ chunk: parsed.message.content })}\n\n`
           );
         }
       } catch (e) {}
@@ -635,7 +635,7 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
     // Hủy bỏ các link Markdown ảo giác do AI tự bịa ra (Ví dụ: [Dell](https://...))
     let cleanAiResponse = fullAiResponse.replace(
       /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
-      "$1",
+      "$1"
     );
     // Đảm bảo tin nhắn lưu vào DB không được để trống
     let savedResponse =
